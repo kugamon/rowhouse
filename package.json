@@ -34,7 +34,7 @@
     "@salesforce/eslint-config-lwc": "^4.1.0",
     "@salesforce/eslint-plugin-lightning": "^2.0.0",
     "@salesforce/sfdx-lwc-jest": "^7.9.0",
-    "eslint": "^9.0.0",
+    "eslint": "^10.12.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-jest": "^28.0.0",
     "fast-xml-parser": "^5.11.2",
