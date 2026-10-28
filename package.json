@@ -28,8 +28,8 @@
   },
   "devDependencies": {
     "@lwc/eslint-plugin-lwc": "^3.5.0",
-    "@lwc/template-compiler": "^9.5.1",
-    "@sa11y/jest": "^8.2.0",
+    "@lwc/template-compiler": "^9.5.2",
+    "@sa11y/jest": "^8.2.1",
     "@salesforce-ux/slds-linter": "1.2.1",
     "@salesforce/eslint-config-lwc": "^4.1.0",
     "@salesforce/eslint-plugin-lightning": "^2.0.0",
