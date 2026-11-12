@@ -353,7 +353,10 @@ export const ROW_OWNER = '__owner';
 export const MAX_LEVELS = 3;
 /** Rows one countChildren call takes (GridChildTables.MAX_COUNT_PARENTS). */
 export const COUNT_BATCH = 2000;
-/** px: below this the toolbar's actions fold into one menu, as the table turns to cards. */
+/**
+ * px: below this the toolbar's actions fold into one menu, as the table turns to cards. Above it
+ * they fold too wherever the toolbar is wider than the card (a record page's narrow column).
+ */
 export const NARROW_WIDTH = 480;
 /** Placeholder rows while the first rows load. */
 export const PLACEHOLDER_ROWS = 6;
@@ -664,7 +667,16 @@ export default class GridView extends NavigationMixin(LightningElement) {
     _memo = {};
     _readers = {};
     /** Non-reactive (HR-20): the width observer, and whether Charts was shown at the last drawing. */
-    _layout = { observer: null, onResize: null, started: false, chartsShown: undefined, focusPicker: null };
+    _layout = {
+        observer: null,
+        toolbarObserver: null,
+        onResize: null,
+        fitPending: false,
+        started: false,
+        toolbarNeed: 0, // px of the grid's own width the full toolbar needs, as last measured
+        chartsShown: undefined,
+        focusPicker: null
+    };
     /**
      * The grid as the admin built it, as this user left it, while a saved
      * view is shown: { sort, grouping, columnChoice, frozen, groupView, chart,
@@ -826,8 +838,10 @@ export default class GridView extends NavigationMixin(LightningElement) {
         this._runtime.onVisibility = null;
         this.askBeforeLeaving(false);
         if (this._layout.observer) this._layout.observer.disconnect();
+        if (this._layout.toolbarObserver) this._layout.toolbarObserver.disconnect();
         if (this._layout.onResize) window.removeEventListener('resize', this._layout.onResize);
         this._layout.observer = null;
+        this._layout.toolbarObserver = null;
         this._layout.onResize = null;
         this._layout.started = false;
     }
@@ -855,10 +869,11 @@ export default class GridView extends NavigationMixin(LightningElement) {
     }
 
     /**
-     * The toolbar folds its actions into a menu below NARROW_WIDTH,
-     * measured on this component's own root (HR-24), with ResizeObserver, or
-     * the window's resize where it does not exist (HR-23). A width of 0 is not
-     * known yet (a hidden tab): the toolbar stays as it is.
+     * The toolbar folds its actions into a menu below NARROW_WIDTH, and wherever
+     * the full toolbar is wider than the card: measured on this component's own
+     * root and toolbar (HR-24), with ResizeObserver, or the window's resize and
+     * each render where it does not exist (HR-23). A width of 0 is not known yet
+     * (a hidden tab): the toolbar stays as it is.
      */
     renderedCallback() {
         this.tellTableItsRoom();
@@ -873,27 +888,66 @@ export default class GridView extends NavigationMixin(LightningElement) {
         }
         // Every change to the unsaved changes renders the Save bar: ask, or stop asking, to match.
         if (this._runtime.connected) this.askBeforeLeaving(hasDrafts(this.drafts));
-        if (this._layout.started || this.isNested) return;
+        if (this.isNested) return;
+        if (this._layout.started) {
+            // No ResizeObserver: a render can add or take away a button, so look again after it (HR-20).
+            if (this._layout.onResize && !this._layout.fitPending) {
+                this._layout.fitPending = true;
+                // eslint-disable-next-line @lwc/lwc/no-async-operation -- measured after the render (HR-20)
+                requestAnimationFrame(() => {
+                    this._layout.fitPending = false;
+                    if (this._layout.onResize) this._layout.onResize();
+                });
+            }
+            return;
+        }
         const root = this.template.querySelector('[data-view-root]');
+        const toolbar = this.template.querySelector('.rh-toolbar');
         if (!root) return;
         this._layout.started = true;
-        const measure = width => {
+        const fit = width => {
             if (!width) return;
-            const narrow = width < NARROW_WIDTH;
+            // Folded, the full toolbar is not there to measure: the width it last needed stands.
+            if (!this.narrow) {
+                const need = this.toolbarNeed(width, toolbar);
+                if (need) this._layout.toolbarNeed = need;
+            }
+            const narrow = width < NARROW_WIDTH || width < this._layout.toolbarNeed;
             if (narrow !== this.narrow) this.narrow = narrow;
         };
         if (typeof ResizeObserver === 'function') {
             this._layout.observer = new ResizeObserver(entries => {
                 const entry = entries && entries[0];
-                measure(entry && entry.contentRect ? entry.contentRect.width : root.getBoundingClientRect().width);
+                fit(entry && entry.contentRect ? entry.contentRect.width : root.getBoundingClientRect().width);
             });
             this._layout.observer.observe(root);
+            // A button that comes or goes (a kept layout's Reset layout, the grid's settings
+            // arriving) changes the toolbar's width, not the grid's.
+            if (toolbar) {
+                this._layout.toolbarObserver = new ResizeObserver(() => fit(root.getBoundingClientRect().width));
+                this._layout.toolbarObserver.observe(toolbar);
+            }
         } else if (typeof window !== 'undefined') {
-            this._layout.onResize = () => measure(root.getBoundingClientRect().width);
+            this._layout.onResize = () => fit(root.getBoundingClientRect().width);
             window.addEventListener('resize', this._layout.onResize);
             // eslint-disable-next-line @lwc/lwc/no-async-operation -- measured after the render (HR-20)
             requestAnimationFrame(this._layout.onResize);
         }
+    }
+
+    /**
+     * The grid width the full toolbar needs: the grid's width less the header's room, plus
+     * the toolbar's own width. The toolbar never shrinks (slds-no-flex), so where it does not
+     * fit it runs past the card, and its width is still the whole of it. 0 while not measurable.
+     */
+    toolbarNeed(width, toolbar) {
+        const header = toolbar && toolbar.parentElement;
+        if (!header) return 0;
+        const toolbarWidth = toolbar.getBoundingClientRect().width;
+        const style = window.getComputedStyle(header);
+        const room = header.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+        if (!toolbarWidth || room <= 0) return 0;
+        return Math.ceil(width - room + toolbarWidth);
     }
 
     /**
@@ -1630,7 +1684,7 @@ export default class GridView extends NavigationMixin(LightningElement) {
         return this.hasDefinition && !this.failedEmpty;
     }
 
-    /** The toolbar's actions in one menu: in a child table, and below NARROW_WIDTH. */
+    /** The toolbar's actions in one menu: in a child table, below NARROW_WIDTH, and where they don't fit. */
     get compactToolbar() {
         return this.isNested || this.narrow;
     }

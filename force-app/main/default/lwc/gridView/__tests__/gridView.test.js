@@ -2335,6 +2335,52 @@ describe('list view details', () => {
             await settle();
             expect($(el, '.rh-actions-menu')).toBeNull();
         });
+
+        it('folds the actions wherever the toolbar is wider than the card, as in a record page column', async () => {
+            const observers = [];
+            global.ResizeObserver = class {
+                constructor(cb) {
+                    this.cb = cb;
+                    observers.push(this);
+                }
+                observe(target) {
+                    this.target = target;
+                }
+                disconnect() {}
+            };
+            const el = mount();
+            await settle();
+            const grid = observers.find(o => o.target.hasAttribute('data-view-root'));
+            const bar = observers.find(o => o.target.classList.contains('rh-toolbar'));
+            expect(bar).toBeDefined();
+            // The full toolbar is 750px wide; the header is as wide as the card.
+            let width = 600;
+            Object.defineProperty($(el, '.rh-header'), 'clientWidth', { get: () => width, configurable: true });
+            $(el, '.rh-toolbar').getBoundingClientRect = () => ({ width: 750 });
+            grid.cb([{ contentRect: { width } }]);
+            await settle();
+            expect($(el, '.rh-actions-menu')).not.toBeNull();
+            expect($(el, '.rh-export')).toBeNull();
+            expect($(el, '.rh-header').classList).toContain('rh-header_narrow');
+            // Wider, but still short of what the toolbar needs: still folded.
+            width = 700;
+            grid.cb([{ contentRect: { width } }]);
+            await settle();
+            expect($(el, '.rh-actions-menu')).not.toBeNull();
+            // Room for all of it: the buttons come back.
+            width = 760;
+            grid.cb([{ contentRect: { width } }]);
+            await settle();
+            expect($(el, '.rh-actions-menu')).toBeNull();
+            expect($(el, '.rh-export')).not.toBeNull();
+            expect($(el, '.rh-header').classList).not.toContain('rh-header_narrow');
+            // A button more makes the toolbar wider, not the card: the toolbar's own observer folds it.
+            $(el, '.rh-toolbar').getBoundingClientRect = () => ({ width: 790 });
+            $(el, '[data-view-root]').getBoundingClientRect = () => ({ width });
+            bar.cb([]);
+            await settle();
+            expect($(el, '.rh-actions-menu')).not.toBeNull();
+        });
     });
 
     describe('the Display Key', () => {
