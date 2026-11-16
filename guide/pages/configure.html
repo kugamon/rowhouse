@@ -37,7 +37,7 @@
     <thead><tr><th>Editor tab</th><th>Records it edits</th><th>Add button</th></tr></thead>
     <tbody>
       <tr><td>Grid</td><td>The Grid Configuration: title, API name, object, rows per page, record page field, frozen columns, height, and what users can do</td><td>—</td></tr>
-      <tr><td>Columns (<i>n</i>)</td><td>One Grid Column per row, left to right; over them, the order the grid opens in (the Grid Configuration's sort), changed with <b>Edit sort</b></td><td><b>Add column</b>, <b>Add formula column</b></td></tr>
+      <tr><td>Columns (<i>n</i>)</td><td>One Grid Column per row, left to right; over them, the order the grid opens in (the Grid Configuration's sort), changed with <b>Edit sort</b></td><td><b>Add column</b>, <b>Add formula column</b>, and <b>Add child total column</b> once the grid has a saved child table</td></tr>
       <tr><td>Display rules (<i>n</i>)</td><td>One Grid Display Rule per row, in the order they apply</td><td><b>Add display rule</b></td></tr>
       <tr><td>Filters (<i>n</i>)</td><td>One Grid Filter per row; every one that is on applies</td><td><b>Add filter</b></td></tr>
       <tr><td>Actions (<i>n</i>)</td><td>One Grid Action per row, in the menu's order</td><td><b>Add action</b></td></tr>
@@ -74,6 +74,7 @@
           <p>One per grid. Its title is what users see above the grid; its API name is what you enter in the Rowhouse Grid component.</p>
           <p><b>Rows per page</b><br>Blank loads the first 200 rows, then 2,000 at a time up to 10,000, then more as users scroll, up to 100,000.</p>
           <p><b>On a record page</b><br>Shows only the records whose lookup points to the page's record, like a related list.</p>
+          <p><b>Frozen columns</b><br>How many columns, from the left, stay put as users scroll sideways: 0 to 5.</p>
           <p><b>Height in pixels</b><br>Blank fills the window.</p>
           <p><b>Show row numbers</b><br>Selected by default: 1, 2, 3 down the left edge, in the order shown.</p>
         </div>

@@ -38,6 +38,11 @@
                     Shows only the records whose lookup points to the page's record, like a related list. None shows the
                     whole list.
                 </dd>
+                <dt>Frozen columns</dt>
+                <dd>
+                    How many columns, from the left, stay put as users scroll sideways: 0 to 5. Users can freeze their own
+                    from a column's menu.
+                </dd>
                 <dt>Height in pixels</dt>
                 <dd>Blank fills the window. Under 160 counts as 160.</dd>
                 <dt>Show row numbers</dt>
@@ -62,6 +67,16 @@
                     Rows with a record Id update that record; rows without one create a record. So import needs
                     Create records with New, and clearing New clears import too.
                 </dd>
+                <dt>Delete selected rows</dt>
+                <dd>
+                    After users confirm, the records go to the Recycle Bin. Users also need delete access to the object
+                    and to each record.
+                </dd>
+                <dt>Log every change in Grid Edit Log</dt>
+                <dd>
+                    Each field change, and each record created, deleted or used in an action, is logged with the user and
+                    time. A change that can't be logged isn't made.
+                </dd>
             </dl>
             <div class="rh-call">
                 <span class="rh-call-k">Tip</span>
@@ -75,15 +90,31 @@
                 read is left out for that user.
             </p>
             <dl class="rh-help-list">
+                <dt>Field</dt>
+                <dd>
+                    The object's fields, then its lookups (Account &gt;): choose one for a field of the related record,
+                    up to five lookups away.
+                </dd>
                 <dt>Edit</dt>
                 <dd>
                     Users can change the cell when this is selected, Edit cells in the grid is selected, and they may edit
                     the field. Formulas, roll-ups and auto-numbers never can be.
                 </dd>
+                <dt>Sort</dt>
+                <dd>
+                    Users can sort the grid by this column. Long text and formula columns never can be. The badge beside
+                    it (1 ↑) is its place in the order the grid opens in, which Edit sort, over the columns, sets: first
+                    any field, then up to four of these columns.
+                </dd>
                 <dt>Wrap</dt>
                 <dd>Up to three lines; otherwise the text is cut off.</dd>
                 <dt>Always shown</dt>
                 <dd>Users can't hide the column with Choose columns.</dd>
+                <dt>Width</dt>
+                <dd>
+                    A starting width in pixels. Auto sizes the column to its type and values. A column is never narrower
+                    than its type needs, and users can resize it for themselves.
+                </dd>
                 <dt>Group, Subtotal</dt>
                 <dd>
                     Group opens the grid grouped by this column, 1 being the outermost grouping. Users can group offers
@@ -93,6 +124,11 @@
                 <dd>
                     Worked out from other fields, in the syntax of a formula field. Read-only. At most 10 formulas a
                     grid, columns and display rules together.
+                </dd>
+                <dt>Child total column</dt>
+                <dd>
+                    A count, sum, average, min or max of each row's records in a child table, such as an account's
+                    contacts. Read-only; at most five a grid. Offered once the grid has a saved child table.
                 </dd>
             </dl>
             <div class="rh-call">
@@ -137,6 +173,11 @@
                 remove them.
             </p>
             <dl class="rh-help-list">
+                <dt>Label</dt>
+                <dd>
+                    The filter's name, in Setup and in any message about it. Blank makes one from the condition. The chip
+                    shows the condition itself.
+                </dd>
                 <dt>Condition, Value</dt>
                 <dd>
                     A picklist value by label or API name, a date as 2026-12-31 or TODAY-30, a lookup as a record Id or
@@ -149,7 +190,10 @@
             </dl>
             <div class="rh-call">
                 <span class="rh-call-k">Tip</span>
-                <p>Users add their own filters from each column's menu, for as long as they stay on the page.</p>
+                <p>
+                    Users add their own from a column's menu or the Filters panel, with their own filter logic, and a
+                    saved view keeps them. Yours always apply under theirs.
+                </p>
             </div>
         </template>
 
@@ -173,8 +217,20 @@
                     Opens in Salesforce's own window over the grid, for one row, then the row is read again. It's
                     offered in each row's menu only.
                 </dd>
+                <dt>Runs</dt>
+                <dd>
+                    The flow's API name, or the quick action's: Account.NewCase for an object's, LogACall for a global
+                    one.
+                </dd>
+                <dt>Input</dt>
+                <dd>The flow's input that gets the record Id. Blank is recordId.</dd>
                 <dt>Offered in</dt>
                 <dd>Each row's menu, the selection bar, or both.</dd>
+                <dt>Asks first</dt>
+                <dd>
+                    A question before an autolaunched flow runs, such as Send the renewal quote? Blank still asks
+                    before a run on selected rows, naming them.
+                </dd>
                 <dt>Permission</dt>
                 <dd>
                     A custom permission's API name: your own, or another package's with its prefix. Only users who
@@ -203,8 +259,13 @@
                 </dd>
                 <dt>Linked by</dt>
                 <dd>The child object's lookup to this grid's object.</dd>
+                <dt>Tab label</dt>
+                <dd>The tab's name. Blank uses the child grid's title.</dd>
                 <dt>Height</dt>
-                <dd>The most the tab's panel grows to, at least 160 pixels. Standard fits the records.</dd>
+                <dd>
+                    How tall the child grid can be, in pixels, at least 160. Standard: 388 under a row, 168 one level
+                    down. Fewer records take less room; more scroll inside.
+                </dd>
                 <dt>Three levels at most</dt>
                 <dd>A grid, its child tables, and theirs.</dd>
             </dl>
@@ -231,6 +292,11 @@
                 <dd>Only its owner can. Anyone who sees it can save a copy as their own.</dd>
                 <dt>Deleting</dt>
                 <dd>You can delete any view here. Its owner can delete it from the grid.</dd>
+                <dt>Your grid underneath</dt>
+                <dd>
+                    Your filters and a record page's record still apply to every view, so a view only narrows the grid.
+                    Child tables have no views.
+                </dd>
             </dl>
         </template>
     </section>
