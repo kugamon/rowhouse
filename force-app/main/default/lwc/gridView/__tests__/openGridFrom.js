@@ -29,7 +29,13 @@ export function openGridFrom({ getGridConfig, getLayout, fetchRows }) {
         const d = config.definition;
         const saved = readLayout(layout.json, d.columns);
         const adminSort = d.sortField
-            ? [{ field: d.sortField, direction: d.sortDirection === 'desc' ? 'desc' : 'asc' }]
+            ? [
+                  { field: d.sortField, direction: d.sortDirection === 'desc' ? 'desc' : 'asc' },
+                  ...(d.thenSort || []).map(k => ({
+                      field: k.field,
+                      direction: k.direction === 'desc' ? 'desc' : 'asc'
+                  }))
+              ]
             : [];
         const sort = saved && saved.sort ? saved.sort : adminSort;
         const grouping = saved && saved.grouping ? saved.grouping : normalizeGrouping(d.grouping, d.columns);
@@ -44,6 +50,8 @@ export function openGridFrom({ getGridConfig, getLayout, fetchRows }) {
                       ? 'desc'
                       : 'asc'
                   : null,
+            // The sorts after the first, the user's or else the admin's, five in all at most.
+            thenSort: (primary ? sort : adminSort).slice(1, 5),
             groupBy: grouping.map(levelParam)
         };
         const answer = { ...config, layout: layout.json, start };
@@ -54,6 +62,7 @@ export function openGridFrom({ getGridConfig, getLayout, fetchRows }) {
                 searchTerm,
                 sortField: primary ? primary.field : null,
                 sortDirection: primary ? primary.direction : null,
+                thenSort: primary && sort.length > 1 ? sort.slice(1, 5) : undefined,
                 groupBy: grouping.length ? grouping.map(levelParam) : undefined,
                 ...(nested ? { parentLink, parentId } : {}),
                 filters: null,

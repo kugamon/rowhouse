@@ -1585,11 +1585,14 @@ export default class GridTable extends NavigationMixin(LightningElement) {
             return m.view;
         }
         // The user's sort. Grouped, buildView gathers each group's rows (in
-        // this order) under it and puts the groups themselves in order.
+        // this order) under it and puts the groups themselves in order. A sort
+        // on a field that is no column (the admin's first, set in Setup) cannot
+        // be compared here: there the rows keep the server's order, which has it.
         const keys = this.sortKeys
-            .filter(k => this.columnByField(k.field))
+            .filter(k => k && k.field)
             .map(k => {
                 const column = this.columnByField(k.field);
+                if (!column) return { ...k, mixed: true };
                 const type = column.type || 'text';
                 // A lookup sorts by the name shown; a picklist in its own
                 // order, as SOQL's ORDER BY does.

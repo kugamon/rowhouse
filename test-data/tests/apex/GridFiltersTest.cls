@@ -337,6 +337,7 @@ private class GridFiltersTest {
                 null,
                 filters,
                 null,
+                null,
                 null
             );
             List<String> names = new List<String>();
@@ -472,7 +473,8 @@ private class GridFiltersTest {
             null,
             filters,
             null,
-            logic
+            logic,
+            null
         );
         List<String> names = new List<String>();
         for (Map<String, Object> r : (List<Map<String, Object>>) page.get('rows')) {

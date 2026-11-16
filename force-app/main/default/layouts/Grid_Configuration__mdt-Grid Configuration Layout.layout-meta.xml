@@ -53,6 +53,10 @@
                 <behavior>Edit</behavior>
                 <field>Default_Sort_Direction__c</field>
             </layoutItems>
+            <layoutItems>
+                <behavior>Edit</behavior>
+                <field>Then_Sort_By__c</field>
+            </layoutItems>
         </layoutColumns>
         <layoutColumns>
             <layoutItems>

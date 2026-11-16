@@ -1,0 +1,106 @@
+<template>
+    <section
+        role="dialog"
+        tabindex="-1"
+        aria-modal="true"
+        aria-labelledby="heading"
+        aria-describedby="intro"
+        class="slds-modal slds-fade-in-open rh-sort-dialog"
+        onkeydown={handleKeyDown}
+    >
+        <div tabindex="0" data-guard="start" onfocus={handleGuardStart}></div>
+        <div class="slds-modal__container">
+            <button class="slds-button slds-button_icon slds-modal__close rh-sort-close" title="Cancel and close" onclick={handleCancel}>
+                <lightning-icon icon-name="utility:close" size="small"></lightning-icon>
+                <span class="slds-assistive-text">Cancel and close</span>
+            </button>
+            <div class="slds-modal__header">
+                <h1 id="heading" class="slds-modal__title slds-hyphenate">Sort</h1>
+            </div>
+            <div class="slds-modal__content slds-p-around_medium rh-sort-dialog-content">
+                <p id="intro" class="slds-text-color_weak slds-m-bottom_small rh-sort-intro">{intro}</p>
+                <template lwc:if={hasRows}>
+                    <ol class="rh-sort-rows">
+                        <template for:each={rowModels} for:item="r">
+                            <li key={r.key} class="rh-sort-row">
+                                <span class="rh-sort-row-label" aria-hidden="true">{r.label}</span>
+                                <lightning-combobox
+                                    class="rh-sort-field"
+                                    label={r.fieldLabel}
+                                    variant="label-hidden"
+                                    placeholder="Choose a column"
+                                    value={r.field}
+                                    options={r.fieldOptions}
+                                    data-index={r.index}
+                                    onchange={handleField}
+                                ></lightning-combobox>
+                                <lightning-combobox
+                                    class="rh-sort-direction"
+                                    label={r.directionLabel}
+                                    variant="label-hidden"
+                                    value={r.direction}
+                                    options={directionOptions}
+                                    data-index={r.index}
+                                    onchange={handleDirection}
+                                ></lightning-combobox>
+                                <span class="rh-sort-row-buttons">
+                                    <lightning-button-icon
+                                        class="rh-sort-up"
+                                        icon-name="utility:arrowup"
+                                        variant="border-filled"
+                                        alternative-text={r.upLabel}
+                                        title={r.upLabel}
+                                        disabled={r.upDisabled}
+                                        data-index={r.index}
+                                        data-delta="-1"
+                                        onclick={handleMove}
+                                    ></lightning-button-icon>
+                                    <lightning-button-icon
+                                        class="rh-sort-down"
+                                        icon-name="utility:arrowdown"
+                                        variant="border-filled"
+                                        alternative-text={r.downLabel}
+                                        title={r.downLabel}
+                                        disabled={r.downDisabled}
+                                        data-index={r.index}
+                                        data-delta="1"
+                                        onclick={handleMove}
+                                    ></lightning-button-icon>
+                                    <lightning-button-icon
+                                        class="rh-sort-remove"
+                                        icon-name="utility:delete"
+                                        variant="border-filled"
+                                        alternative-text={r.removeLabel}
+                                        title={r.removeLabel}
+                                        data-index={r.index}
+                                        onclick={handleRemove}
+                                    ></lightning-button-icon>
+                                </span>
+                            </li>
+                        </template>
+                    </ol>
+                </template>
+                <template lwc:else>
+                    <p class="slds-m-bottom_small rh-sort-none">No sort: the grid opens in the order Salesforce returns the records.</p>
+                </template>
+                <div class="rh-sort-add-row">
+                    <lightning-button
+                        class="rh-sort-add"
+                        variant="base"
+                        label="Add sort"
+                        icon-name="utility:add"
+                        disabled={addDisabled}
+                        onclick={handleAdd}
+                    ></lightning-button>
+                    <span class="slds-m-left_x-small slds-text-color_weak rh-sort-hint">{addHint}</span>
+                </div>
+            </div>
+            <div class="slds-modal__footer">
+                <button class="slds-button slds-button_neutral rh-sort-cancel" onclick={handleCancel}>Cancel</button>
+                <button class="slds-button slds-button_brand rh-sort-save" disabled={saveDisabled} onclick={handleSave}>Done</button>
+            </div>
+        </div>
+        <div tabindex="0" data-guard="end" onfocus={handleGuardEnd}></div>
+    </section>
+    <div class="slds-backdrop slds-backdrop_open" role="presentation"></div>
+</template>

@@ -11,6 +11,7 @@ import {
     FORMULA_OPERATOR,
     FORMULA_TYPES,
     MAX_FORMULAS,
+    MAX_SORT_LEVELS,
     OPERATORS,
     SHOW_IN,
     STYLES,
@@ -21,6 +22,7 @@ import {
     fitRuleToField,
     isFormulaColumn,
     isFormulaRule,
+    isSortColumn,
     moveItem,
     nameProblem,
     needsValue,
@@ -29,10 +31,13 @@ import {
     newFormulaColumn,
     newRule,
     operatorsFor,
+    pruneSort,
     sameDraft,
+    sortLevelsOf,
     toServer,
     valueHint,
-    withKeys
+    withKeys,
+    withSortLevels
 } from 'c/gridAdminDraft';
 
 const values = list => list.map(o => o.value);
@@ -529,5 +534,55 @@ describe('fitting a rule or a filter to a new field', () => {
         const fitted = fitRuleToField(rule, null, 'date');
         expect(fitted).toEqual(rule);
         expect(fitted).not.toBe(rule);
+    });
+});
+
+describe('the default sort', () => {
+    const columns = [
+        { field: 'StageName', sortable: true, inactive: false },
+        { field: 'LastModifiedDate', sortable: true, inactive: false },
+        { field: 'Amount', sortable: true, inactive: false },
+        { field: null, formula: 'Amount * 2', sortable: false }
+    ];
+    const config = {
+        sortField: 'StageName',
+        sortDirection: 'asc',
+        thenSort: [{ field: 'LastModifiedDate', direction: 'desc' }]
+    };
+
+    it('reads every level, the first first, and writes them back', () => {
+        expect(sortLevelsOf(config)).toEqual([
+            { field: 'StageName', direction: 'asc' },
+            { field: 'LastModifiedDate', direction: 'desc' }
+        ]);
+        expect(sortLevelsOf({ sortField: null, thenSort: [{ field: 'Amount' }] })).toEqual([]);
+        expect(sortLevelsOf({ sortField: 'Amount' })).toEqual([{ field: 'Amount', direction: 'asc' }]);
+        const back = withSortLevels({ label: 'Deals' }, sortLevelsOf(config));
+        expect(back).toEqual({ label: 'Deals', ...config });
+        expect(withSortLevels(config, [])).toMatchObject({ sortField: null, sortDirection: 'asc', thenSort: [] });
+        const six = ['A', 'B', 'C', 'D', 'E', 'F'].map(field => ({ field, direction: 'asc' }));
+        expect(withSortLevels({}, six).thenSort).toHaveLength(MAX_SORT_LEVELS - 1);
+    });
+
+    it('a column switched off, unsortable or on another field leaves the sorts after the first', () => {
+        expect(pruneSort(config, columns)).toEqual({ config, dropped: [] });
+        const off = columns.map(c => (c.field === 'LastModifiedDate' ? { ...c, inactive: true } : c));
+        const pruned = pruneSort(config, off);
+        expect(pruned.dropped).toEqual(['LastModifiedDate']);
+        expect(pruned.config).toMatchObject({ sortField: 'StageName', sortDirection: 'asc', thenSort: [] });
+        const unsortable = columns.map(c => (c.field === 'LastModifiedDate' ? { ...c, sortable: false } : c));
+        expect(pruneSort(config, unsortable).config.thenSort).toEqual([]);
+        const moved = columns.map(c => (c.field === 'LastModifiedDate' ? { ...c, field: 'CloseDate' } : c));
+        expect(pruneSort(config, moved).dropped).toEqual(['LastModifiedDate']);
+        // The first sort may be any field: its column switched off, it stays.
+        const firstOff = columns.map(c => (c.field === 'StageName' ? { ...c, inactive: true } : c));
+        expect(pruneSort(config, firstOff)).toEqual({ config, dropped: [] });
+    });
+
+    it('keeps a first sort on a field that is no column at all', () => {
+        const setup = { sortField: 'CreatedDate', sortDirection: 'desc', thenSort: [] };
+        expect(pruneSort(setup, columns)).toEqual({ config: setup, dropped: [] });
+        expect(isSortColumn(columns[3])).toBe(false);
+        expect(isSortColumn({ field: 'Amount', childTable: 'Deal_Notes', childTotal: 'count' })).toBe(false);
     });
 });

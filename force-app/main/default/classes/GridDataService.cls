@@ -463,16 +463,19 @@ public with sharing class GridDataService {
      * the user sorted that column the other way, so each group's rows arrive
      * together. A lookup orders by the name shown and then by the Id, so two
      * records with the same name still make two groups, each in one piece.
+     * Then the sort, every level of it, in order.
      */
     private static String orderBy(Schema.SObjectType objectType, GridRequest request) {
+        List<Map<String, String>> sorts = new List<Map<String, String>>();
+        if (String.isNotBlank(request.sortField)) {
+            sorts.add(new Map<String, String>{ 'field' => request.sortField, 'direction' => request.sortDirection });
+            sorts.addAll(request.thenSort);
+        }
         List<String> keys = new List<String>();
         Set<String> used = new Set<String>();
         for (String groupField : request.groupFields) {
             GridPaths.FieldPath fp = sortableField(objectType, groupField, 'group');
-            String direction = groupField.equalsIgnoreCase(request.sortField) &&
-                'desc'.equalsIgnoreCase(request.sortDirection)
-                ? 'DESC'
-                : 'ASC';
+            String direction = 'desc'.equalsIgnoreCase(directionOf(sorts, groupField)) ? 'DESC' : 'ASC';
             String path = namePathFor(fp);
             if (path != null) {
                 keys.add(path + ' ' + direction + ' NULLS LAST');
@@ -480,17 +483,29 @@ public with sharing class GridDataService {
             keys.add(fp.soql + ' ' + direction + ' NULLS LAST');
             used.add(fp.local.toLowerCase());
         }
-        if (String.isNotBlank(request.sortField)) {
-            GridPaths.FieldPath fp = sortableField(objectType, request.sortField, 'sort');
-            if (!used.contains(fp.local.toLowerCase())) {
-                String direction = 'desc'.equalsIgnoreCase(request.sortDirection) ? 'DESC' : 'ASC';
-                // A lookup sorts by the name the user sees, not by the record Id.
-                String path = namePathFor(fp);
-                keys.add((path != null ? path : fp.soql) + ' ' + direction + ' NULLS LAST');
+        for (Map<String, String> key : sorts) {
+            GridPaths.FieldPath fp = sortableField(objectType, key.get('field'), 'sort');
+            if (used.contains(fp.local.toLowerCase())) {
+                continue;
             }
+            used.add(fp.local.toLowerCase());
+            String direction = 'desc'.equalsIgnoreCase(key.get('direction')) ? 'DESC' : 'ASC';
+            // A lookup sorts by the name the user sees, not by the record Id.
+            String path = namePathFor(fp);
+            keys.add((path != null ? path : fp.soql) + ' ' + direction + ' NULLS LAST');
         }
         keys.add('Id ASC');
         return ' ORDER BY ' + String.join(keys, ', ');
+    }
+
+    /** The direction the sort gives a field, or null when the sort does not name it. */
+    private static String directionOf(List<Map<String, String>> sorts, String field) {
+        for (Map<String, String> key : sorts) {
+            if (field.equalsIgnoreCase(key.get('field'))) {
+                return key.get('direction');
+            }
+        }
+        return null;
     }
 
     /**

@@ -358,6 +358,8 @@ export const COUNT_BATCH = 2000;
  * they fold too wherever the toolbar is wider than the card (a record page's narrow column).
  */
 export const NARROW_WIDTH = 480;
+/** The sorts the server orders the rows by: the first and up to four after it (GridConfig.MAX_SORT_LEVELS). */
+export const MAX_SORT_LEVELS = 5;
 /** Placeholder rows while the first rows load. */
 export const PLACEHOLDER_ROWS = 6;
 /** ms after the last layout change before it is kept. */
@@ -479,9 +481,24 @@ function groupingOf(saved, cols) {
     return grouping.length || !saved.length ? grouping : null;
 }
 
-/** The admin's sort, as the configuration sets it. */
+/** The admin's sort, as the configuration sets it: the first sort, then the ones after it. */
 function adminSort(d) {
-    return d && d.sortField ? [{ field: d.sortField, direction: d.sortDirection === 'desc' ? 'desc' : 'asc' }] : [];
+    if (!d || !d.sortField) return [];
+    const then = (Array.isArray(d.thenSort) ? d.thenSort : [])
+        .filter(k => k && k.field)
+        .map(k => ({ field: k.field, direction: k.direction === 'desc' ? 'desc' : 'asc' }));
+    return [{ field: d.sortField, direction: d.sortDirection === 'desc' ? 'desc' : 'asc' }, ...then];
+}
+
+/** The same sort, key for key? */
+function sameSort(a, b) {
+    const plain = list => JSON.stringify((list || []).map(k => [k.field, k.direction === 'desc' ? 'desc' : 'asc']));
+    return plain(a) === plain(b);
+}
+
+/** The sorts after the first, as fetchRows takes them: up to MAX_SORT_LEVELS in all. */
+function thenSortOf(sort) {
+    return (sort || []).slice(1, MAX_SORT_LEVELS).map(k => ({ field: k.field, direction: k.direction }));
 }
 
 /** Re-opening a cursor between calls can shift a page by one row: de-duplicate by Id. */
@@ -1157,6 +1174,8 @@ export default class GridView extends NavigationMixin(LightningElement) {
                   ? 'desc'
                   : 'asc'
               : null;
+        // The sorts after the first: this user's, or without one the admin's.
+        const thenSort = thenSortOf(primary ? this.sort : adminSort(d));
         const groupBy = this.grouping.map(levelParam);
         const theirs = Array.isArray(start.groupBy) ? start.groupBy : [];
         // A saved view's filters: the server's reading of them, and the grid's.
@@ -1174,6 +1193,7 @@ export default class GridView extends NavigationMixin(LightningElement) {
         return (
             (start.sortField || null) === sortField &&
             (start.sortDirection || null) === sortDirection &&
+            sameSort(Array.isArray(start.thenSort) ? start.thenSort : [], thenSort) &&
             theirs.length === groupBy.length &&
             theirs.every((g, i) => g === groupBy[i]) &&
             plain(theirFilters) === plain(this.filters) &&
@@ -1193,6 +1213,8 @@ export default class GridView extends NavigationMixin(LightningElement) {
             searchTerm: this.searchTerm || null,
             sortField: primary ? primary.field : null,
             sortDirection: primary ? primary.direction : null,
+            // The sorts after the first, so the server orders the rows by every one.
+            thenSort: primary && this.sort.length > 1 ? thenSortOf(this.sort) : undefined,
             // Grouped, rows come in group order. Not sent otherwise.
             groupBy: this.grouping.length ? this.grouping.map(levelParam) : undefined,
             // A child table's rows are its parent's.
@@ -2133,7 +2155,11 @@ export default class GridView extends NavigationMixin(LightningElement) {
     get layoutJson() {
         const t = this._saved.table;
         const b = this.view && this._base.state ? this._base.state : this.adminState;
-        const layout = { v: 1, sort: b.sort, grouping: b.grouping };
+        // A sort is kept only when it is this user's own: one that is the admin's
+        // is left out, so the grid follows the admin's sort, also when it changes.
+        const layout = sameSort(b.sort, adminSort(this.definition))
+            ? { v: 1, grouping: b.grouping }
+            : { v: 1, sort: b.sort, grouping: b.grouping };
         if (t.widths && Object.keys(t.widths).length) layout.widths = t.widths;
         if (t.wrap && Object.keys(t.wrap).length) layout.wrap = t.wrap;
         if (t.expanded && t.expanded.length) layout.expanded = t.expanded;

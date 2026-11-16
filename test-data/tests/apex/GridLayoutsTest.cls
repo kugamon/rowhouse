@@ -131,8 +131,52 @@ private class GridLayoutsTest {
         return new Map<String, Object>{
             'sortField' => sortField,
             'sortDirection' => sortDirection,
+            'thenSort' => new List<Map<String, Object>>(),
             'groupBy' => groupBy
         };
+    }
+
+    private static Map<String, Object> key(String field, String direction) {
+        return new Map<String, Object>{ 'field' => field, 'direction' => direction };
+    }
+
+    @IsTest
+    static void theAdminsSortsAfterTheFirstComeWithIt() {
+        GridConfig.Definition d = grid();
+        d.thenSort.add(new Map<String, String>{ 'field' => 'Close__c', 'direction' => 'desc' });
+        Map<String, Object> admin = GridLayouts.startOf(d, null);
+        System.assertEquals('Name', admin.get('sortField'));
+        System.assertEquals(new List<Map<String, Object>>{ key('Close__c', 'desc') }, admin.get('thenSort'));
+        System.assertEquals(
+            admin.get('thenSort'),
+            GridLayouts.startOf(d, '{"v":1,"grouping":[]}').get('thenSort'),
+            'A layout without a sort follows the admin\'s.'
+        );
+        System.assertEquals(
+            new List<Map<String, Object>>(),
+            GridLayouts.startOf(d, '{"sort":[{"field":"Done__c","direction":"desc"}]}').get('thenSort'),
+            'A user\'s own sort replaces every level of the admin\'s.'
+        );
+    }
+
+    @IsTest
+    static void theLayoutsSortKeepsEveryKeyThatStillFitsUpToFive() {
+        Map<String, Object> s = GridLayouts.startOf(
+            grid(),
+            '{"sort":[{"field":"Gone__c"},{"field":"Close__c","direction":"desc"},{"field":"Notes__c"},{"field":"Name"},{"field":"Done__c","direction":"desc"},{"field":"Stage__c"},{"field":"Owner__c"}]}'
+        );
+        System.assertEquals('Close__c', s.get('sortField'));
+        System.assertEquals('desc', s.get('sortDirection'));
+        System.assertEquals(
+            new List<Map<String, Object>>{
+                key('Name', 'asc'),
+                key('Done__c', 'desc'),
+                key('Stage__c', 'asc'),
+                key('Owner__c', 'asc')
+            },
+            s.get('thenSort'),
+            'Unknown and unsortable keys passed over; five in all.'
+        );
     }
 
     @IsTest

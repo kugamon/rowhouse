@@ -222,28 +222,6 @@
                                 <template lwc:if={hasObject}>
                                     <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
                                         <lightning-combobox
-                                            class="rh-config-sort-field"
-                                            label="Sort by"
-                                            options={sortFieldOptions}
-                                            value={config.sortField}
-                                            data-list="config"
-                                            data-prop="sortField"
-                                            onchange={handleChange}
-                                        ></lightning-combobox>
-                                    </div>
-                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
-                                        <lightning-combobox
-                                            class="rh-config-sort-direction"
-                                            label="Sort direction"
-                                            options={sortDirectionOptions}
-                                            value={config.sortDirection}
-                                            data-list="config"
-                                            data-prop="sortDirection"
-                                            onchange={handleChange}
-                                        ></lightning-combobox>
-                                    </div>
-                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-m-bottom_small">
-                                        <lightning-combobox
                                             class="rh-config-record-page"
                                             label="On a record page, show the records whose"
                                             options={recordPageOptions}
@@ -407,6 +385,28 @@
                                     can hide and move columns for themselves; select Always shown to keep one on screen. A
                                     saved column cannot be deleted: switch it off instead.
                                 </p>
+                                <!-- The order the grid opens in: the Sort dialog, and a badge on each sorted column. -->
+                                <div class="slds-box slds-box_x-small slds-m-bottom_small rh-sort-summary">
+                                    <div class="slds-grid slds-grid_vertical-align-center slds-wrap rh-sort-summary-row">
+                                        <p class="slds-col rh-sort-summary-text">
+                                            <template lwc:if={hasSort}>
+                                                <span class="slds-text-title_bold">Opens sorted by</span> {sortText}
+                                            </template>
+                                            <template lwc:else>
+                                                <span class="slds-text-title_bold">No default sort.</span> The grid opens in the order Salesforce returns the records.
+                                            </template>
+                                        </p>
+                                        <lightning-button
+                                            class="slds-col_bump-left rh-sort-edit"
+                                            label="Edit sort"
+                                            disabled={saving}
+                                            onclick={handleSortOpen}
+                                        ></lightning-button>
+                                    </div>
+                                    <template lwc:if={sortNotice}>
+                                        <p class="slds-m-top_xx-small slds-text-color_weak rh-sort-notice">{sortNotice}</p>
+                                    </template>
+                                </div>
                                 <div class="rh-editor-table-wrap rh-columns-wrap">
                                     <table
                                         class="slds-table slds-table_bordered slds-table_cell-buffer rh-editor-table rh-columns"
@@ -606,19 +606,26 @@
                                                         ></lightning-input>
                                                     </td>
                                                     <td>
-                                                        <lightning-input
-                                                            class="rh-column-sortable"
-                                                            type="checkbox"
-                                                            label={c.sortableLabel}
-                                                            variant="label-hidden"
-                                                            checked={c.sortable}
-                                                            disabled={c.sortableDisabled}
-                                                            data-list="columns"
-                                                            data-key={c.key}
-                                                            data-prop="sortable"
-                                                            data-kind="checkbox"
-                                                            onchange={handleChange}
-                                                        ></lightning-input>
+                                                        <div class="slds-grid slds-grid_vertical-align-center rh-sort-cell">
+                                                            <lightning-input
+                                                                class="rh-column-sortable"
+                                                                type="checkbox"
+                                                                label={c.sortableLabel}
+                                                                variant="label-hidden"
+                                                                checked={c.sortable}
+                                                                disabled={c.sortableDisabled}
+                                                                data-list="columns"
+                                                                data-key={c.key}
+                                                                data-prop="sortable"
+                                                                data-kind="checkbox"
+                                                                onchange={handleChange}
+                                                            ></lightning-input>
+                                                            <template lwc:if={c.sortBadge}>
+                                                                <span class="slds-badge slds-badge_lightest slds-m-left_xx-small rh-sort-badge" title={c.sortBadgeText}>
+                                                                    <span aria-hidden="true">{c.sortBadge}</span><lightning-icon icon-name={c.sortArrow} size="xx-small" class="slds-m-left_xx-small rh-sort-arrow"></lightning-icon><span class="slds-assistive-text">{c.sortBadgeText}</span>
+                                                                </span>
+                                                            </template>
+                                                        </div>
                                                     </td>
                                                     <td>
                                                         <lightning-input
@@ -1705,6 +1712,16 @@
                     </div>
                 </div>
             </template>
+        </template>
+        <template lwc:if={sortDialogOpen}>
+            <c-grid-sort-dialog
+                levels={sortLevels}
+                options={sortOptions}
+                first-options={sortFirstOptions}
+                grid-label={config.label}
+                onsave={handleSortSave}
+                oncancel={handleSortCancel}
+            ></c-grid-sort-dialog>
         </template>
     </div>
 </template>

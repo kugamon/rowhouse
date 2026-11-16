@@ -219,6 +219,7 @@ private class GridPathsTest {
             null,
             filters,
             null,
+            null,
             null
         );
         return (List<Map<String, Object>>) page.get('rows');

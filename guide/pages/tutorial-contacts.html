@@ -66,7 +66,6 @@
         <tr><td>Grid title</td><td><span class="v">Account People</span><button class="copy" data-copy="Account People">Copy</button></td></tr>
         <tr><td>API name</td><td><span class="v">Account_People</span> <span class="note">fills in by itself</span></td></tr>
         <tr><td>Object</td><td><span class="v">Contact (Contact)</span></td></tr>
-        <tr><td>Sort by</td><td><span class="v">Last Name (LastName)</span></td></tr>
         <tr><td>On a record page, show the records whose</td><td><span class="v">Account ID (AccountId), on Account pages</span></td></tr>
       </tbody></table>
       <div class="check why">The last one is what ties the grid to the page it sits on: on an account's page it shows only the contacts whose Account is that account. The list offers each lookup of Contact to one object, with the pages it works on.</div></li>
@@ -80,6 +79,8 @@
           <tr><td class="d">Account ID (AccountId)</td><td>—</td></tr>
         </tbody></table></div>
       <div class="check">The Account column's Header box suggests <b>Account</b>, in gray: a lookup is headed by what it points to, so there is no need to type one.</div></li>
+    <li><b>Sort it by last name.</b> Over the columns, click <span class="ui">Edit sort</span>. In <span class="ui">Sort by</span>, choose <span class="v">Last Name (LastName)</span>, leave <span class="ui">Ascending</span>, and click <span class="ui">Done</span>.
+      <div class="check">The line over the columns reads <b>Opens sorted by Last Name (ascending)</b>. Sort by can be any field the object can be sorted by, even one that is not a column; the rows after it, <span class="ui">Then by</span>, take the grid's columns.</div></li>
     <li><b>Keep the name on screen.</b> On the <span class="ui">Full Name (Name)</span> row, select <span class="ui">Always shown</span>.
       <div class="check why">Users can hide and move the grid's columns for themselves (step 6). This one they can move, but not hide.</div></li>
   </ol>

@@ -136,6 +136,7 @@ private class GridControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
             );
             List<Map<String, Object>> rows = (List<Map<String, Object>>) result.get('rows');
@@ -150,6 +151,7 @@ private class GridControllerTest {
         System.runAs(GridTestUsers.fullUser()) {
             Map<String, Object> result = GridController.fetchRows(
                 'Consignment_Charges',
+                null,
                 null,
                 null,
                 null,
@@ -299,6 +301,63 @@ private class GridControllerTest {
                 System.assert(false, 'Expected a refusal.');
             } catch (AuraHandledException e) {
                 System.assertEquals('Cannot group by Pieces__c.', e.getMessage());
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ a sort of several columns
+
+    @IsTest
+    static void theRowsComeInEveryLevelOfTheSort() {
+        System.runAs(GridTestUsers.fullUser()) {
+            insert new List<Consignment__c>{
+                new Consignment__c(Name = 'Casco one', Consignee__c = 'Casco Freight', Pieces__c = 1),
+                new Consignment__c(Name = 'Casco three', Consignee__c = 'Casco Freight', Pieces__c = 3),
+                new Consignment__c(Name = 'Casco two', Consignee__c = 'Casco Freight', Pieces__c = 2)
+            };
+            Map<String, Object> result = GridController.fetchRows(
+                'Consignments',
+                'Casco',
+                'Consignee__c',
+                'asc',
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new List<Map<String, Object>>{
+                    new Map<String, Object>{ 'field' => 'Pieces__c', 'direction' => 'desc' }
+                }
+            );
+            List<String> names = new List<String>();
+            for (Map<String, Object> row : (List<Map<String, Object>>) result.get('rows')) {
+                names.add((String) row.get('Name'));
+            }
+            System.assertEquals(new List<String>{ 'Casco three', 'Casco two', 'Casco one' }, names);
+            try {
+                GridController.fetchRows(
+                    'Consignments',
+                    null,
+                    'Name',
+                    'asc',
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null,
+                    new List<Map<String, Object>>{ new Map<String, Object>{ 'field' => 'Delivery_Notes__c' } }
+                );
+                System.assert(false, 'A sort after the first is checked as the first is.');
+            } catch (AuraHandledException e) {
+                System.assert(e.getMessage().startsWith('Cannot sort by Delivery_Notes__c'), e.getMessage());
             }
         }
     }
@@ -575,6 +634,7 @@ private class GridControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
             );
             System.assert(false, 'Expected an exception.');
@@ -618,6 +678,7 @@ private class GridControllerTest {
                 null,
                 null,
                 null,
+                null,
                 null
             );
             List<Map<String, Object>> rows = (List<Map<String, Object>>) page.get('rows');
@@ -629,6 +690,7 @@ private class GridControllerTest {
                     null,
                     'CreatedDate',
                     'asc',
+                    null,
                     null,
                     null,
                     null,

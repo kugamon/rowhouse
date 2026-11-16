@@ -119,6 +119,7 @@ private class GridObjectAccessTest {
                         null,
                         null,
                         null,
+                        null,
                         null
                     );
                 }
@@ -281,6 +282,7 @@ private class GridObjectAccessTest {
             Map<String, Object> page = GridController.fetchRows(
                 'Consignments',
                 PROBE,
+                null,
                 null,
                 null,
                 null,

@@ -71,7 +71,6 @@ import {
     GROUP_OFFERED_TYPES,
     MAX_NAME,
     SHOW_IN,
-    SORT_DIRECTIONS,
     STYLES,
     SUBTOTALS,
     apiNameFrom,
@@ -97,7 +96,11 @@ import {
     operatorsFor,
     pathField,
     pathSteps,
+    pruneSort,
+    isSortColumn,
     sameDraft,
+    sortLevelsOf,
+    withSortLevels,
     toServer,
     valueHint,
     walkPath,
@@ -198,10 +201,16 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
     savedViewsBusy = false;
     /** The Grid Guide's panel folded away (the page layout). */
     helpHidden = false;
+    /** The Sort dialog is open (Columns tab, Edit sort). */
+    sortDialogOpen = false;
+    /** Which sorts a change to the columns took out of the default sort, said under it. */
+    sortNotice = '';
     _layout = 'panel';
 
     // ---- non-reactive containers (HR-20) ----
     _runtime = { token: 0, checkToken: 0, checkTimer: null, connected: false };
+    /** Where focus goes after the next render: Edit sort, once the Sort dialog closes. */
+    _measurements = { focus: null };
     /** The draft as last saved or read, and whether the API name was typed by hand. */
     _memo = { saved: null, nameEdited: false, fieldsFor: null, fields: new Map() };
 
@@ -470,12 +479,99 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
         }
     }
 
-    get sortFieldOptions() {
-        return [NONE, ...this.fieldOptions(this.config.sortField, f => f.sortable)];
+    // ============================================================ the default sort
+
+    /** What a column is called here: its header, else its field's heading or label. */
+    sortLabelOf(field) {
+        const c = ((this.draft && this.draft.columns) || []).find(col => col.field === field);
+        if (c && c.columnLabel) return c.columnLabel;
+        const f = this.fieldOf(field);
+        return f ? f.heading || f.label : field;
     }
 
-    get sortDirectionOptions() {
-        return SORT_DIRECTIONS;
+    get sortLevels() {
+        return sortLevelsOf(this.config);
+    }
+
+    /** "Stage (ascending), then Last Modified Date (descending)", or blank for no sort. */
+    get sortText() {
+        return this.sortLevels
+            .map(l => `${this.sortLabelOf(l.field)} (${l.direction === 'desc' ? 'descending' : 'ascending'})`)
+            .join(', then ');
+    }
+
+    get hasSort() {
+        return this.sortLevels.length > 0;
+    }
+
+    /** The columns a Then by row can use: on, sortable, in the grid's order, once each. */
+    get sortOptions() {
+        const options = [];
+        const seen = new Set();
+        ((this.draft && this.draft.columns) || []).filter(isSortColumn).forEach(c => {
+            const key = String(c.field).toLowerCase();
+            if (seen.has(key)) return;
+            seen.add(key);
+            options.push({ value: c.field, label: this.sortLabelOf(c.field) });
+        });
+        return options;
+    }
+
+    /**
+     * What Sort by can use: any field the grid can sort by, columns or not, as
+     * the Grid tab's Sort by offered (Last Name on a grid that shows Full Name).
+     */
+    get sortFirstOptions() {
+        return this.fieldOptions(this.config.sortField, f => f.sortable);
+    }
+
+    handleSortOpen() {
+        this.sortDialogOpen = true;
+    }
+
+    handleSortSave(event) {
+        const levels = (event.detail && event.detail.levels) || [];
+        this.draft = { ...this.draft, config: withSortLevels(this.draft.config, levels) };
+        this.sortNotice = '';
+        this.closeSortDialog();
+        this.scheduleCheck();
+    }
+
+    handleSortCancel() {
+        this.closeSortDialog();
+    }
+
+    /** Focus goes back to Edit sort, the button that opened the dialog. */
+    closeSortDialog() {
+        this.sortDialogOpen = false;
+        this._measurements.focus = '.rh-sort-edit';
+    }
+
+    renderedCallback() {
+        const selector = this._measurements.focus;
+        if (!selector) return;
+        const target = this.template.querySelector(selector);
+        if (target) {
+            this._measurements.focus = null;
+            target.focus();
+        }
+    }
+
+    /**
+     * The columns as they are now, and the default sort to match: a sort whose
+     * column was switched off, can no longer be sorted or shows another field
+     * leaves it, and the summary says so before the save.
+     */
+    withColumns(columns) {
+        const { config, dropped } = pruneSort(this.draft.config, columns);
+        if (dropped.length) {
+            const names = dropped.map(f => this.sortLabelOf(f));
+            this.sortNotice =
+                names.length === 1
+                    ? `${names[0]} was taken out of the default sort, as its column changed.`
+                    : `${names.join(', ')} were taken out of the default sort, as their columns changed.`;
+        }
+        return { ...this.draft, config, columns };
     }
 
     /**
@@ -604,6 +700,7 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
                 sortable: !formula && !childTotal && c.sortable !== false,
                 sortableDisabled: !f || !f.sortable,
                 sortableLabel: `${name} can be sorted`,
+                ...this.sortBadgeOf(c),
                 wrap: c.wrap === true,
                 wrapLabel: `Wrap ${name}`,
                 alwaysShown: c.alwaysShown === true,
@@ -635,6 +732,19 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
                 removeLabel: `Remove ${name}`
             };
         });
+    }
+
+    /** Where a column stands in the default sort: "1" and an up arrow for the first, ascending. */
+    sortBadgeOf(c) {
+        const levels = isSortColumn(c) ? this.sortLevels : [];
+        const at = levels.findIndex(l => String(l.field).toLowerCase() === String(c.field).toLowerCase());
+        if (at < 0) return { sortBadge: '' };
+        const desc = levels[at].direction === 'desc';
+        return {
+            sortBadge: String(at + 1),
+            sortArrow: desc ? 'utility:arrowdown' : 'utility:arrowup',
+            sortBadgeText: `Default sort ${at + 1}, ${desc ? 'descending' : 'ascending'}`
+        };
     }
 
     /** A column's field lists: its object's fields and lookups, then each parent's, as far as the path goes. */
@@ -1106,7 +1216,6 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
         const config = { ...this.draft.config, [prop]: value };
         if (prop === 'label' && config.isNew && !this._memo.nameEdited) config.name = apiNameFrom(value);
         if (prop === 'name') this._memo.nameEdited = true;
-        if (prop === 'sortField' && !value) config.sortField = null;
         if (prop === 'recordPageField' && !value) config.recordPageField = null;
         if (prop === 'allowNewRecords' && value === false) config.allowImport = false; // import needs New
         this.draft = { ...this.draft, config };
@@ -1124,7 +1233,7 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
             rules: [],
             children: [],
             filters: [],
-            config: { ...this.draft.config, sortField: null, recordPageField: null }
+            config: { ...this.draft.config, sortField: null, sortDirection: 'asc', thenSort: [], recordPageField: null }
         };
         if (!objectApiName) return;
         try {
@@ -1133,7 +1242,12 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
             this.described = described;
             const nameField = (described.fields || []).find(f => f.isName);
             if (nameField) {
-                this.draft = { ...this.draft, columns: [fitColumnToField(newColumn(nameField.name), nameField)] };
+                // The name column it starts with, and sorted by it, A to Z.
+                this.draft = {
+                    ...this.draft,
+                    columns: [fitColumnToField(newColumn(nameField.name), nameField)],
+                    config: withSortLevels(this.draft.config, [{ field: nameField.name, direction: 'asc' }])
+                };
             }
             this.scheduleCheck();
         } catch (e) {
@@ -1200,7 +1314,7 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
             }
             return changed;
         });
-        this.draft = { ...this.draft, [list]: items };
+        this.draft = list === 'columns' ? this.withColumns(items) : { ...this.draft, [list]: items };
         if (list === 'columns' && prop === 'childTable') this.loadChildFields();
         this.scheduleCheck();
     }
@@ -1242,7 +1356,7 @@ export default class GridConfigEditor extends NavigationMixin(LightningElement) 
         const { list, key } = event.target.dataset;
         const items = this.draft[list].filter(item => item._key !== key || item.name);
         if (items.length === this.draft[list].length) return;
-        this.draft = { ...this.draft, [list]: items };
+        this.draft = list === 'columns' ? this.withColumns(items) : { ...this.draft, [list]: items };
         this.scheduleCheck();
     }
 

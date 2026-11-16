@@ -577,7 +577,7 @@ describe('keeping changes', () => {
         await settle();
         groupChange(el, [{ field: 'Service_Level__c', unit: null }]);
         await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
-        expect(keptLayout()).toEqual({ v: 1, sort: ADMIN_SORT, grouping: [{ field: 'Service_Level__c', unit: null }] });
+        expect(keptLayout()).toEqual({ v: 1, grouping: [{ field: 'Service_Level__c', unit: null }] });
     });
 
     it("keeps the groups' order and percentages, and leaves them out when they are the default", async () => {
@@ -606,7 +606,7 @@ describe('keeping changes', () => {
         await settle();
         layoutChange(el, { widths: null, wrap: {}, expanded: [] });
         await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
-        expect(Object.keys(keptLayout())).toEqual(['v', 'sort', 'grouping']);
+        expect(Object.keys(keptLayout())).toEqual(['v', 'grouping']);
         layoutChange(el, { widths: {}, wrap: null, expanded: 'none' });
         await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
         // The same layout as before: nothing new to send.
@@ -1135,5 +1135,87 @@ describe('Reset layout', () => {
         await settle();
         expect(resetLayout).toHaveBeenCalledWith({ configName: 'Consignments', parentLink: null });
         expect(items(el)).not.toContain('Reset layout');
+    });
+});
+
+describe("the admin's sort of several columns", () => {
+    // The admin sorts by Name, then by Ship Date, newest first.
+    const THEN = { ...DEFINITION, thenSort: [{ field: 'Ship_Date__c', direction: 'desc' }] };
+    const BOTH = [
+        { field: 'Name', direction: 'asc' },
+        { field: 'Ship_Date__c', direction: 'desc' }
+    ];
+
+    beforeEach(() => {
+        getGridConfig.mockResolvedValue({ definition: THEN, diagnostics: false });
+    });
+
+    it('opens sorted by every level, in the order the first page came in', async () => {
+        const el = mount();
+        await settle();
+        expect(tableConfig(el).sort).toEqual(BOTH);
+        expect(fetchRows).toHaveBeenCalledTimes(1);
+        expect(fetchRows.mock.calls[0][0].thenSort).toEqual([{ field: 'Ship_Date__c', direction: 'desc' }]);
+        expect($(el, '.rh-sorted').textContent).toBe('Sorted by Name, then Ship Date');
+    });
+
+    it('asks again when the first page came in another order', async () => {
+        openGrid.mockImplementation(async args => {
+            const answer = await openGridFrom({ getGridConfig, getLayout, fetchRows })(args);
+            return { ...answer, start: { ...answer.start, thenSort: [] } };
+        });
+        const el = mount();
+        await settle();
+        expect(fetchRows).toHaveBeenCalledTimes(2);
+        expect(lastCall(fetchRows).sortField).toBe('Name');
+        expect(lastCall(fetchRows).thenSort).toEqual([{ field: 'Ship_Date__c', direction: 'desc' }]);
+        expect(tableConfig(el).sort).toEqual(BOTH);
+    });
+
+    it("sends the user's own sorts after the first when the rows come again", async () => {
+        fetchRows.mockResolvedValue(page([row(1), row(2)], { hasMore: true, locator: 'L1', total: 900 }));
+        const el = mount();
+        await settle();
+        sortChange(el, [
+            { field: 'Freight_Charge__c', direction: 'desc' },
+            { field: 'Name', direction: 'asc' }
+        ]);
+        await settle();
+        expect(lastCall(fetchRows).sortField).toBe('Freight_Charge__c');
+        expect(lastCall(fetchRows).thenSort).toEqual([{ field: 'Name', direction: 'asc' }]);
+    });
+
+    it("keeps no sort while it is the admin's, so the admin's later change reaches the user", async () => {
+        const el = mount();
+        await settle();
+        layoutChange(el, { widths: { Name: 240 } });
+        await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
+        expect(keptLayout().sort).toBeUndefined();
+        expect(keptLayout().widths).toEqual({ Name: 240 });
+        const kept = lastCall(saveLayout).layout;
+        el.remove();
+
+        // The admin now sorts by Ship Date alone, oldest first.
+        getGridConfig.mockResolvedValue({
+            definition: { ...DEFINITION, sortField: 'Ship_Date__c', sortDirection: 'asc', thenSort: [] },
+            diagnostics: false
+        });
+        getLayout.mockResolvedValue(kept);
+        const again = mount();
+        await settle();
+        expect(tableConfig(again).sort).toEqual([{ field: 'Ship_Date__c', direction: 'asc' }]);
+        expect(tableConfig(again).userLayout.widths).toEqual({ Name: 240 });
+    });
+
+    it("keeps the user's own sort, and Reset layout brings back every level of the admin's", async () => {
+        const el = mount();
+        await settle();
+        sortChange(el, [{ field: 'Freight_Charge__c', direction: 'desc' }]);
+        await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
+        expect(keptLayout().sort).toEqual([{ field: 'Freight_Charge__c', direction: 'desc' }]);
+        $(el, '.rh-reset-layout').click();
+        await settle();
+        expect(tableConfig(el).sort).toEqual(BOTH);
+        expect($(el, '.rh-sorted').textContent).toBe('Sorted by Name, then Ship Date');
     });
 });

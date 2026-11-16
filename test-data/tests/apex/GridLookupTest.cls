@@ -119,6 +119,7 @@ private class GridLookupTest {
                 null,
                 null,
                 null,
+                null,
                 null
             );
             List<Map<String, Object>> rows = (List<Map<String, Object>>) result.get('rows');

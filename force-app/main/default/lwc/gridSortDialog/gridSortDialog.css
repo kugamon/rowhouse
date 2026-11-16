@@ -1,0 +1,51 @@
+/* The column lists open over the footer, as in Salesforce's own dialogs. */
+.rh-sort-dialog-content {
+    overflow: visible;
+}
+
+/* One row for each level: its name, the column, the direction, then its buttons. */
+.rh-sort-rows {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.rh-sort-row {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1.6fr) minmax(0, 1fr) auto;
+    gap: var(--slds-g-spacing-2, 0.5rem);
+    align-items: center;
+    margin-bottom: var(--slds-g-spacing-2, 0.5rem);
+}
+
+.rh-sort-row-label {
+    color: var(--slds-g-color-on-surface-2, #2e2e2e);
+    font-size: var(--slds-g-font-scale-neg-1, 0.75rem);
+}
+
+.rh-sort-row-buttons {
+    display: inline-flex;
+    gap: var(--slds-g-spacing-1, 0.25rem);
+}
+
+/* Add sort, under the column lists. */
+.rh-sort-add-row {
+    display: flex;
+    align-items: center;
+    margin-left: calc(4.5rem + var(--slds-g-spacing-2, 0.5rem));
+}
+
+/* On a phone: the name above, the two lists side by side, the buttons under them. */
+@media (max-width: 30em) {
+    .rh-sort-row {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+
+    .rh-sort-row-label {
+        grid-column: 1 / -1;
+    }
+
+    .rh-sort-add-row {
+        margin-left: 0;
+    }
+}

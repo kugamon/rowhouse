@@ -206,6 +206,8 @@ public with sharing class GridConfig {
         'fiscal_year'
     };
     public static final Integer MAX_GROUP_LEVELS = 3;
+    /** The sorts a grid can open with: Default Sort Field and up to four in Then Sort By, as a list view's Column Sort. */
+    public static final Integer MAX_SORT_LEVELS = 5;
     private static final Pattern RELATIVE_DATE = Pattern.compile('^TODAY(?:([+-])(\\d{1,4}))?$');
     private static final Pattern ISO_DATE = Pattern.compile('^\\d{4}-\\d{2}-\\d{2}$');
     private static final Pattern TIME_OF_DAY = Pattern.compile('^([01]\\d|2[0-3]):([0-5]\\d)(?::([0-5]\\d))?$');
@@ -468,6 +470,13 @@ public with sharing class GridConfig {
         public String sortField;
         @AuraEnabled
         public String sortDirection;
+        /**
+         * The sorts after sortField, in order: [{ field, direction }], each a
+         * column the grid can sort by, direction "asc" or "desc"; up to
+         * MAX_SORT_LEVELS - 1. Empty without a sortField.
+         */
+        @AuraEnabled
+        public List<Map<String, String>> thenSort = new List<Map<String, String>>();
         @AuraEnabled
         public Boolean allowInlineEdit;
         /**
@@ -1160,6 +1169,7 @@ public with sharing class GridConfig {
             def.columns.add(col);
         }
         loadGrouping(def, groupDefaults);
+        loadThenSort(def, cfg.Then_Sort_By__c);
         loadDisplayRules(def, allRules, objectType, GridFormulas.MAX_FORMULAS - formulas);
         def.children = GridChildTables.childrenFrom(links, objectType, def.warnings);
         def.actions = GridActions.actionsFrom(actionRecords, objectType, def.warnings);
@@ -1230,6 +1240,108 @@ public with sharing class GridConfig {
             }
             def.grouping.add(new Map<String, String>{ 'field' => g.col.field, 'unit' => unit });
         }
+    }
+
+    /**
+     * Then Sort By: the sorts after Default Sort Field, each a column the grid
+     * can sort by, in order, up to MAX_SORT_LEVELS in all. One that does not
+     * fit is skipped with a warning. Without a Default Sort Field (none set,
+     * or one the grid cannot sort by), the first that fits takes its place.
+     */
+    private static void loadThenSort(Definition def, String raw) {
+        if (String.isBlank(raw)) {
+            return;
+        }
+        Map<String, Column> sortable = new Map<String, Column>();
+        for (Column c : def.columns) {
+            if (c.sortable == true && c.field != null) {
+                sortable.put(c.field.toLowerCase(), c);
+            }
+        }
+        Set<String> used = new Set<String>();
+        if (String.isNotBlank(def.sortField)) {
+            used.add(def.sortField.trim().toLowerCase());
+        }
+        for (Map<String, String> level : parseSortLevels(raw)) {
+            if (level.containsKey('error')) {
+                def.warnings.add(
+                    'Then Sort By: "' +
+                        level.get('error') +
+                        '" is not a field followed by ASC or DESC, so it is skipped.'
+                );
+                continue;
+            }
+            String field = level.get('field');
+            Column c = sortable.get(field.toLowerCase());
+            if (c == null) {
+                def.warnings.add(
+                    'Then Sort By: ' + field + ' is not a column of this grid that can be sorted, so it is skipped.'
+                );
+                continue;
+            }
+            if (used.contains(c.field.toLowerCase())) {
+                def.warnings.add('Then Sort By: ' + field + ' is already in the sort, so it is skipped.');
+                continue;
+            }
+            Integer levels = (String.isBlank(def.sortField) ? 0 : 1) + def.thenSort.size();
+            if (levels >= MAX_SORT_LEVELS) {
+                def.warnings.add(
+                    'Then Sort By: a grid sorts by up to ' +
+                        MAX_SORT_LEVELS +
+                        ' fields, so ' +
+                        field +
+                        ' and any after it are skipped.'
+                );
+                break;
+            }
+            used.add(c.field.toLowerCase());
+            if (String.isBlank(def.sortField)) {
+                def.sortField = c.field;
+                def.sortDirection = level.get('direction');
+            } else {
+                def.thenSort.add(new Map<String, String>{ 'field' => c.field, 'direction' => level.get('direction') });
+            }
+        }
+    }
+
+    /**
+     * Then Sort By as written, "LastModifiedDate DESC, CloseDate ASC": one
+     * { field, direction } per part, direction "asc" unless DESC is given. A
+     * part that is not a field and an optional ASC or DESC comes back as
+     * { error } with the part. Nothing here is checked against the object.
+     */
+    public static List<Map<String, String>> parseSortLevels(String raw) {
+        List<Map<String, String>> out = new List<Map<String, String>>();
+        if (String.isBlank(raw)) {
+            return out;
+        }
+        for (String part : raw.split(',')) {
+            String text = part.trim();
+            if (String.isBlank(text)) {
+                continue;
+            }
+            List<String> words = text.split('\\s+');
+            String direction = words.size() > 1 ? words[1].toLowerCase() : 'asc';
+            if (words.size() > 2 || (direction != 'asc' && direction != 'desc')) {
+                out.add(new Map<String, String>{ 'error' => text });
+            } else {
+                out.add(new Map<String, String>{ 'field' => words[0], 'direction' => direction });
+            }
+        }
+        return out;
+    }
+
+    /** The sorts as Then Sort By keeps them: "LastModifiedDate DESC, CloseDate ASC"; null for none. */
+    public static String formatSortLevels(List<Map<String, String>> levels) {
+        List<String> parts = new List<String>();
+        for (Map<String, String> level : levels == null ? new List<Map<String, String>>() : levels) {
+            if (level != null && String.isNotBlank(level.get('field'))) {
+                parts.add(
+                    level.get('field').trim() + ('desc'.equalsIgnoreCase(level.get('direction')) ? ' DESC' : ' ASC')
+                );
+            }
+        }
+        return parts.isEmpty() ? null : String.join(parts, ', ');
     }
 
     /** The display rules that are on, in Sort Order; a rule that does not make sense is skipped with a warning. */
@@ -1731,6 +1843,44 @@ public with sharing class GridConfig {
             objectType.getDescribe(SObjectDescribeOptions.DEFERRED).getRecordTypeInfos().size() > 1;
     }
 
+    /**
+     * The sort the grid opens with keeps only fields this user can read:
+     * sorting by one they cannot would hint at its values, and the query
+     * could not run. The sorts after one left out move up. A field that cannot
+     * be found at all stays, and is reported where the sort is used.
+     */
+    @TestVisible
+    private static void narrowSort(Definition def, Schema.SObjectType objectType) {
+        List<Map<String, String>> levels = new List<Map<String, String>>();
+        if (String.isNotBlank(def.sortField)) {
+            levels.add(new Map<String, String>{ 'field' => def.sortField, 'direction' => def.sortDirection });
+        }
+        levels.addAll(def.thenSort);
+        List<Map<String, String>> readable = new List<Map<String, String>>();
+        for (Map<String, String> level : levels) {
+            Boolean ok = true;
+            try {
+                ok = GridSecurity.canReadPath(GridPaths.resolve(objectType, level.get('field')));
+            } catch (GridException e) {
+                ok = true;
+            }
+            if (ok) {
+                readable.add(level);
+            }
+        }
+        if (readable.size() == levels.size()) {
+            return;
+        }
+        def.sortField = readable.isEmpty() ? null : readable[0].get('field');
+        if (!readable.isEmpty()) {
+            def.sortDirection = readable[0].get('direction');
+        }
+        def.thenSort = new List<Map<String, String>>();
+        for (Integer i = 1; i < readable.size(); i++) {
+            def.thenSort.add(readable[i]);
+        }
+    }
+
     public static Definition forUser(String developerName) {
         Definition def = load(developerName);
         Schema.SObjectType objectType = GridDescribe.typeFor(def.objectApiName);
@@ -1832,6 +1982,7 @@ public with sharing class GridConfig {
             }
         }
         def.grouping = grouping;
+        narrowSort(def, objectType);
         // A rule on a field this user cannot read would reveal the value by its
         // color, so it goes, without a warning that would name the field.
         // The same for a rule's other field and a formula rule's fields; a

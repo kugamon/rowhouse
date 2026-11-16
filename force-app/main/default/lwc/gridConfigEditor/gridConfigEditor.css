@@ -53,9 +53,13 @@
 }
 
 .rh-columns th:nth-child(4),
-.rh-columns th:nth-child(5),
 .rh-columns th:nth-child(6) {
     width: 3rem;
+}
+
+/* Sort: its box, and beside it the default sort's badge ("1 ↑"). */
+.rh-columns th:nth-child(5) {
+    width: 5.5rem;
 }
 
 /* Always shown: wide enough for its two words. */
@@ -83,15 +87,15 @@
 /*
  * Where the tabs have less room than a table needs, that table scrolls
  * sideways instead of running over what is beside it. The columns table needs
- * 55rem for its fixed columns and 12rem or more for Field; the others, 60rem.
+ * 57.5rem for its fixed columns and 12rem or more for Field; the others, 60rem.
  */
-@container rh-ed-main (width < 67rem) {
+@container rh-ed-main (width < 69.5rem) {
     .rh-columns-wrap {
         overflow-x: auto;
     }
 
     .rh-columns {
-        min-width: 67rem;
+        min-width: 69.5rem;
     }
 }
 
@@ -219,10 +223,10 @@
 
 /*
  * The Grid Guide sits beside the tabs only while the columns table still fits
- * next to it (67rem, the tabs' padding and the Guide's 20rem); with less room
- * it follows the tabs.
+ * next to it (69.5rem, the tabs' padding and the Guide's 20rem); with less
+ * room it follows the tabs.
  */
-@container rh-editor (width < 91rem) {
+@container rh-editor (width < 93.5rem) {
     .rh-ed-body_page {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -250,4 +254,25 @@
     display: flex;
     flex-direction: column;
     gap: var(--slds-g-spacing-1, 0.25rem);
+}
+
+/* The default sort's summary over the columns table, on light blue (SLDS blue 95), its text in from the edge. */
+.rh-sort-summary {
+    background-color: var(--slds-g-color-palette-blue-95, rgb(238, 244, 255));
+}
+
+.rh-sort-summary-row,
+.rh-sort-notice {
+    padding-left: var(--slds-g-spacing-2, 0.5rem);
+    padding-right: var(--slds-g-spacing-1, 0.25rem);
+}
+
+/* Sort: the checkbox, then the default sort's badge beside it ("1 ↑"). */
+.rh-sort-cell > .rh-column-sortable {
+    flex: none;
+}
+
+.rh-sort-badge {
+    flex: none;
+    white-space: nowrap;
 }

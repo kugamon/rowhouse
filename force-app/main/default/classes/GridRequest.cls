@@ -11,6 +11,12 @@ public with sharing class GridRequest {
     public Integer pageSize;
     public String sortField;
     public String sortDirection;
+    /**
+     * The sorts after sortField, in order: [{ field, direction }]. The caller
+     * has checked each against the grid (GridController); GridDataService
+     * checks each against describe and field access, as it does sortField.
+     */
+    public List<Map<String, String>> thenSort = new List<Map<String, String>>();
     public String searchTerm;
     public List<Id> recordIds;
     /** The cursor token the previous page returned; see GridDataService. */
@@ -62,6 +68,12 @@ public with sharing class GridRequest {
     public GridRequest orderBy(String field, String direction) {
         this.sortField = field;
         this.sortDirection = direction;
+        return this;
+    }
+
+    /** The sorts after the first, in order; none for null. */
+    public GridRequest thenBy(List<Map<String, String>> keys) {
+        this.thenSort = keys == null ? new List<Map<String, String>>() : keys;
         return this;
     }
 

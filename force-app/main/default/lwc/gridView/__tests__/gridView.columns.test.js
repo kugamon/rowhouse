@@ -157,7 +157,8 @@ describe("the user's own columns", () => {
         await settle();
         expect(tableConfig(el).columnChoice).toEqual(HIDE_NOTES);
         await jest.advanceTimersByTimeAsync(LAYOUT_DELAY_MS);
-        expect(keptLayout()).toEqual({ v: 1, sort: ADMIN_SORT, grouping: [], columns: HIDE_NOTES });
+        // The admin's sort is not kept: the grid follows it.
+        expect(keptLayout()).toEqual({ v: 1, grouping: [], columns: HIDE_NOTES });
     });
 
     it('ignores a choice that changes nothing, and keeps none', async () => {

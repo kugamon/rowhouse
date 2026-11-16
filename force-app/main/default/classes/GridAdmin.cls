@@ -80,6 +80,9 @@ public with sharing class GridAdmin {
         public String sortField;
         @AuraEnabled
         public String sortDirection;
+        /** The sorts after sortField, in order (Then Sort By): columns with Sort selected. */
+        @AuraEnabled
+        public List<SortLevel> thenSort = new List<SortLevel>();
         @AuraEnabled
         public Boolean allowInlineEdit = true;
         @AuraEnabled
@@ -109,6 +112,14 @@ public with sharing class GridAdmin {
         /** Out of use. Read for the page; a save keeps what the org has, and only archive changes it. */
         @AuraEnabled
         public Boolean archived = false;
+    }
+
+    /** One sort after the first: a column's field, and asc or desc. */
+    public class SortLevel {
+        @AuraEnabled
+        public String field;
+        @AuraEnabled
+        public String direction = 'asc';
     }
 
     /** A Grid Column. The list's order is the grid's order. */
@@ -491,6 +502,14 @@ public with sharing class GridAdmin {
         d.config.pageSize = toInteger(cfg.Page_Size__c);
         d.config.sortField = cfg.Default_Sort_Field__c;
         d.config.sortDirection = cfg.Default_Sort_Direction__c;
+        for (Map<String, String> level : GridConfig.parseSortLevels(cfg.Then_Sort_By__c)) {
+            if (!level.containsKey('error')) {
+                SortLevel l = new SortLevel();
+                l.field = level.get('field');
+                l.direction = level.get('direction');
+                d.config.thenSort.add(l);
+            }
+        }
         d.config.allowInlineEdit = cfg.Allow_Inline_Edit__c == true;
         d.config.allowCsvExport = cfg.Allow_CSV_Export__c == true;
         d.config.requireExportReports = cfg.Require_Export_Reports__c == true;
@@ -862,6 +881,7 @@ public with sharing class GridAdmin {
                 result.errors.add('Default sort: ' + e.getMessage());
             }
         }
+        checkThenSort(d, result);
         checkColumns(d, objectType, result);
         for (Integer i = 0; i < d.rules.size(); i++) {
             RuleDraft r = d.rules[i];
@@ -1025,6 +1045,53 @@ public with sharing class GridAdmin {
 
     private static String label(String label, Integer index) {
         return String.isBlank(label) ? String.valueOf(index + 1) : label.trim();
+    }
+
+    /**
+     * The sorts after the first: each a column of the grid that is on, on a
+     * field, with Sort selected; none twice; up to GridConfig.MAX_SORT_LEVELS in
+     * all; and only after a first sort.
+     */
+    private static void checkThenSort(Draft d, Check result) {
+        List<Map<String, String>> levels = sortLevels(d.config.thenSort);
+        if (levels.isEmpty()) {
+            return;
+        }
+        if (String.isBlank(d.config.sortField)) {
+            result.errors.add('Default sort: choose the first column to sort by before the others.');
+            return;
+        }
+        if (levels.size() > GridConfig.MAX_SORT_LEVELS - 1) {
+            result.errors.add('Default sort: a grid sorts by up to ' + GridConfig.MAX_SORT_LEVELS + ' columns.');
+        }
+        Set<String> sortable = new Set<String>();
+        for (ColumnDraft col : d.columns) {
+            Boolean onField =
+                String.isNotBlank(col.field) &&
+                String.isBlank(col.formula) &&
+                String.isBlank(col.childTable);
+            if (onField && col.inactive != true && col.sortable != false) {
+                sortable.add(col.field.trim().toLowerCase());
+            }
+        }
+        Set<String> used = new Set<String>{ d.config.sortField.trim().toLowerCase() };
+        for (Map<String, String> level : levels) {
+            String field = level.get('field').toLowerCase();
+            if (!sortable.contains(field)) {
+                result.errors.add(
+                    'Default sort: ' +
+                        level.get('field') +
+                        ' is not a column of this grid that is on and can be sorted.'
+                );
+            } else if (used.contains(field)) {
+                result.errors.add('Default sort: ' + level.get('field') + ' is in the sort twice.');
+            }
+            used.add(field);
+        }
+        String kept = GridConfig.formatSortLevels(levels);
+        if (kept != null && kept.length() > 255) {
+            result.errors.add('Default sort: too long to keep. Sort by fewer columns.');
+        }
     }
 
     private static void checkColumns(Draft d, Schema.SObjectType objectType, Check result) {
@@ -1681,12 +1748,24 @@ public with sharing class GridAdmin {
 
     // ------------------------------------------------------- field values
 
+    /** The draft's sorts after the first, as GridConfig reads and writes them. */
+    private static List<Map<String, String>> sortLevels(List<SortLevel> levels) {
+        List<Map<String, String>> out = new List<Map<String, String>>();
+        for (SortLevel l : levels == null ? new List<SortLevel>() : levels) {
+            if (l != null && String.isNotBlank(l.field)) {
+                out.add(new Map<String, String>{ 'field' => l.field.trim(), 'direction' => l.direction });
+            }
+        }
+        return out;
+    }
+
     private static Map<Schema.SObjectField, Object> configValues(ConfigDraft c) {
         return new Map<Schema.SObjectField, Object>{
             Grid_Configuration__mdt.Object_API_Name__c => trimmed(c.objectApiName),
             Grid_Configuration__mdt.Page_Size__c => toDecimal(c.pageSize),
             Grid_Configuration__mdt.Default_Sort_Field__c => trimmed(c.sortField),
             Grid_Configuration__mdt.Default_Sort_Direction__c => trimmed(c.sortDirection),
+            Grid_Configuration__mdt.Then_Sort_By__c => GridConfig.formatSortLevels(sortLevels(c.thenSort)),
             Grid_Configuration__mdt.Allow_Inline_Edit__c => c.allowInlineEdit == true,
             Grid_Configuration__mdt.Allow_CSV_Export__c => c.allowCsvExport == true,
             Grid_Configuration__mdt.Require_Export_Reports__c => c.requireExportReports == true,

@@ -213,6 +213,100 @@ private class GridAdminTest {
         }
     }
 
+    private static GridAdmin.SortLevel sortLevel(String field, String direction) {
+        GridAdmin.SortLevel l = new GridAdmin.SortLevel();
+        l.field = field;
+        l.direction = direction;
+        return l;
+    }
+
+    @IsTest
+    static void theSortsAfterTheFirstAreSavedInThenSortBy() {
+        System.runAs(GridTestUsers.adminUser()) {
+            GridAdmin.Draft d = newDraft('Sorted_Twice');
+            d.config.sortField = 'Freight_Charge__c';
+            d.config.sortDirection = 'desc';
+            d.config.thenSort.add(sortLevel('Name', 'asc'));
+            System.assertEquals(new List<String>(), GridAdmin.check(d).errors);
+            GridAdmin.deployWith = new Kept();
+            GridAdmin.save(d);
+            Map<String, Metadata.CustomMetadata> sent = byName(((Kept) GridAdmin.deployWith).container);
+            System.assertEquals(
+                'Name ASC',
+                valueOf(sent.get('Grid_Configuration__mdt.Sorted_Twice'), 'Then_Sort_By__c')
+            );
+
+            GridConfig.Definition def = GridConfig.build(
+                GridAdmin.configRecord(d),
+                GridAdmin.columnRecords(d),
+                new List<Grid_Display_Rule__mdt>(),
+                new List<Grid_Child_Table__mdt>(),
+                new List<Grid_Action__mdt>()
+            );
+            System.assertEquals('Freight_Charge__c', def.sortField);
+            System.assertEquals(
+                new List<Map<String, String>>{ new Map<String, String>{ 'field' => 'Name', 'direction' => 'asc' } },
+                def.thenSort,
+                'The grid reads what the editor saves.'
+            );
+
+            GridAdmin.Draft none = newDraft('Sorted_Once');
+            none.config.sortField = 'Name';
+            GridAdmin.deployWith = new Kept();
+            GridAdmin.save(none);
+            sent = byName(((Kept) GridAdmin.deployWith).container);
+            System.assertEquals(null, valueOf(sent.get('Grid_Configuration__mdt.Sorted_Once'), 'Then_Sort_By__c'));
+        }
+    }
+
+    @IsTest
+    static void aSortAfterTheFirstMustBeAColumnThatIsOnAndCanBeSorted() {
+        System.runAs(GridTestUsers.adminUser()) {
+            GridAdmin.Draft twice = newDraft('Sort_Twice');
+            twice.config.sortField = 'Name';
+            twice.config.thenSort.add(sortLevel('name', 'desc'));
+            System.assert(String.join(GridAdmin.check(twice).errors, ' ').contains('in the sort twice'));
+
+            GridAdmin.Draft off = newDraft('Sort_Off');
+            off.config.sortField = 'Name';
+            off.columns[1].inactive = true;
+            off.config.thenSort.add(sortLevel('Freight_Charge__c', 'asc'));
+            System.assert(
+                String.join(GridAdmin.check(off).errors, ' ').contains('is not a column of this grid that is on'),
+                'A column switched off.'
+            );
+
+            GridAdmin.Draft unsortable = newDraft('Sort_Unsortable');
+            unsortable.config.sortField = 'Name';
+            unsortable.columns[1].sortable = false;
+            unsortable.config.thenSort.add(sortLevel('Freight_Charge__c', 'asc'));
+            System.assert(String.join(GridAdmin.check(unsortable).errors, ' ').contains('can be sorted'));
+
+            GridAdmin.Draft notAColumn = newDraft('Sort_Elsewhere');
+            notAColumn.config.sortField = 'Name';
+            notAColumn.config.thenSort.add(sortLevel('Pieces__c', 'asc'));
+            System.assert(String.join(GridAdmin.check(notAColumn).errors, ' ').contains('Pieces__c is not a column'));
+
+            GridAdmin.Draft noFirst = newDraft('Sort_No_First');
+            noFirst.config.thenSort.add(sortLevel('Name', 'asc'));
+            System.assert(String.join(GridAdmin.check(noFirst).errors, ' ').contains('first column to sort by'));
+
+            GridAdmin.Draft tooMany = newDraft('Sort_Too_Many');
+            tooMany.config.sortField = 'Pieces__c';
+            for (
+                String f : new List<String>{ 'Name', 'Freight_Charge__c', 'Consignee__c', 'Mode__c', 'Ship_Date__c' }
+            ) {
+                GridAdmin.ColumnDraft c = new GridAdmin.ColumnDraft();
+                c.field = f;
+                if (f != 'Name' && f != 'Freight_Charge__c') {
+                    tooMany.columns.add(c);
+                }
+                tooMany.config.thenSort.add(sortLevel(f, 'asc'));
+            }
+            System.assert(String.join(GridAdmin.check(tooMany).errors, ' ').contains('up to 5 columns'));
+        }
+    }
+
     @IsTest
     static void aTurnedOffColumnIsLeftOutOfTheGrid() {
         System.runAs(GridTestUsers.adminUser()) {

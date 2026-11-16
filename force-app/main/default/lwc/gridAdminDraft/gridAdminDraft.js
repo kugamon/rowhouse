@@ -30,6 +30,9 @@ export const SORT_DIRECTIONS = Object.freeze([
     { value: 'desc', label: 'Descending' }
 ]);
 
+/** The sorts a grid can open with: the first and up to four after it (GridConfig.MAX_SORT_LEVELS). */
+export const MAX_SORT_LEVELS = 5;
+
 export const SUBTOTALS = Object.freeze([
     { value: 'sum', label: 'Sum' },
     { value: 'average', label: 'Average' },
@@ -193,6 +196,60 @@ export function isFormulaColumn(column) {
     return Boolean(column) && column.formula !== null && column.formula !== undefined;
 }
 
+// ---------------------------------------------------------------- the default sort
+
+/** The sort a grid opens with, every level of it: [{ field, direction }], the first first. */
+export function sortLevelsOf(config) {
+    const c = config || {};
+    if (!c.sortField) return [];
+    const then = (Array.isArray(c.thenSort) ? c.thenSort : [])
+        .filter(l => l && l.field)
+        .map(l => ({ field: l.field, direction: l.direction === 'desc' ? 'desc' : 'asc' }));
+    return [{ field: c.sortField, direction: c.sortDirection === 'desc' ? 'desc' : 'asc' }, ...then];
+}
+
+/** The configuration with this sort: the first in Sort by and Sort direction, the rest in thenSort. */
+export function withSortLevels(config, levels) {
+    const list = (levels || []).filter(l => l && l.field).slice(0, MAX_SORT_LEVELS);
+    const first = list[0];
+    return {
+        ...config,
+        sortField: first ? first.field : null,
+        sortDirection: first && first.direction === 'desc' ? 'desc' : 'asc',
+        thenSort: list.slice(1).map(l => ({ field: l.field, direction: l.direction === 'desc' ? 'desc' : 'asc' }))
+    };
+}
+
+/** A column on a field, switched on, that users can sort by: one the default sort can use. */
+export function isSortColumn(column) {
+    return (
+        Boolean(column && column.field) &&
+        !isFormulaColumn(column) &&
+        !isChildTotalColumn(column) &&
+        column.inactive !== true &&
+        column.sortable !== false
+    );
+}
+
+/**
+ * The sort, after a change to the columns: a sort after the first whose column
+ * was switched off, can no longer be sorted, or now shows another field leaves
+ * the sort, and the ones after it move up. The first sort stays: it may be any
+ * field the grid can sort by, a column or not. Returns { config, dropped: [field, …] }.
+ */
+export function pruneSort(config, columns) {
+    const usable = new Set((columns || []).filter(isSortColumn).map(c => String(c.field).toLowerCase()));
+    const levels = sortLevelsOf(config);
+    const dropped = [];
+    const kept = levels.filter((l, i) => {
+        const ok = i === 0 || usable.has(String(l.field).toLowerCase());
+        if (!ok) dropped.push(l.field);
+        return ok;
+    });
+    if (!dropped.length) return { config, dropped };
+    return { config: withSortLevels(config, kept), dropped };
+}
+
 /** Does the rule compare against a value? The blank tests do not. */
 export function needsValue(operator) {
     return operator !== 'is_blank' && operator !== 'is_not_blank';
@@ -354,6 +411,7 @@ export function emptyDraft() {
             pageSize: null,
             sortField: null,
             sortDirection: 'asc',
+            thenSort: [],
             allowInlineEdit: true,
             allowNewRecords: true,
             allowCsvExport: true,

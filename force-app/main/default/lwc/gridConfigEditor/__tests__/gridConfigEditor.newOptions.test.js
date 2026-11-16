@@ -812,7 +812,14 @@ describe('a new grid', () => {
         await afterCheck();
         expect(describeObject).toHaveBeenLastCalledWith({ objectApiName: 'Account' });
         const sent = lastDraft();
-        expect(sent.config).toMatchObject({ objectApiName: 'Account', recordPageField: null, sortField: null });
+        // Sorted by the name column it starts with, A to Z.
+        expect(sent.config).toMatchObject({
+            objectApiName: 'Account',
+            recordPageField: null,
+            sortField: 'Name',
+            sortDirection: 'asc',
+            thenSort: []
+        });
         expect(sent.filters).toEqual([]);
         expect(sent.columns.map(c => c.field)).toEqual(['Name']);
         expect($$(el, '.rh-filter-field')).toHaveLength(0);

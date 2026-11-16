@@ -726,6 +726,7 @@ private class GridGroupServiceTest {
                 null,
                 null,
                 null,
+                null,
                 null
             );
             List<String> seen = new List<String>();
@@ -783,6 +784,7 @@ private class GridGroupServiceTest {
                     null,
                     null,
                     new List<String>{ 'Pieces__c' },
+                    null,
                     null,
                     null,
                     null,

@@ -56,6 +56,10 @@ public with sharing class GridController {
      * valueTo }], joined by filterLogic ("1 AND (2 OR 3)"; blank: all must
      * hold); recordId is the record whose page a top-level grid is
      * on. GridFilters checks them all; the admin's filters always apply.
+     *
+     * thenSort is the sort after sortField, in order: [{ field, direction }],
+     * each checked as sortField is. Without a sortField the admin's sort
+     * applies, every level of it.
      */
     @AuraEnabled
     public static Map<String, Object> fetchRows(
@@ -71,7 +75,8 @@ public with sharing class GridController {
         String parentId,
         List<Map<String, Object>> filters,
         String recordId,
-        String filterLogic
+        String filterLogic,
+        List<Map<String, Object>> thenSort
     ) {
         try {
             Long started = System.now().getTime();
@@ -81,6 +86,7 @@ public with sharing class GridController {
                 searchTerm,
                 sortField,
                 sortDirection,
+                thenSort,
                 cursorLocator,
                 pageSize,
                 cursorToken,
@@ -170,6 +176,7 @@ public with sharing class GridController {
                         searchTerm,
                         (String) start.get('sortField'),
                         (String) start.get('sortDirection'),
+                        (List<Map<String, Object>>) start.get('thenSort'),
                         null,
                         null,
                         null,
@@ -203,6 +210,7 @@ public with sharing class GridController {
         String searchTerm,
         String sortField,
         String sortDirection,
+        List<Map<String, Object>> thenSort,
         String cursorLocator,
         Integer pageSize,
         String cursorToken,
@@ -231,8 +239,10 @@ public with sharing class GridController {
         request.groupedBy(GridGroupService.fields(GridGroupService.levels(def, groupBy)));
         if (String.isNotBlank(sortField)) {
             request.orderBy(sortableColumn(def, sortField), sortDirection);
+            request.thenBy(thenSortOf(def, thenSort));
         } else if (String.isNotBlank(def.sortField)) {
             request.orderBy(def.sortField, def.sortDirection);
+            request.thenBy(def.thenSort);
         }
         GridPage page = GridDataService.fetchPage(request);
         return new Map<String, Object>{
@@ -253,6 +263,34 @@ public with sharing class GridController {
      * layout's sort is read the same way (GridLayouts.startOf). Whether the
      * user may read the field is GridDataService's to check.
      */
+    /**
+     * The sorts the browser asked for after the first, each checked as the
+     * first is (sortableColumn), in order, up to the grid's limit; a blank one
+     * is passed over.
+     */
+    private static List<Map<String, String>> thenSortOf(GridConfig.Definition def, List<Map<String, Object>> keys) {
+        List<Map<String, String>> out = new List<Map<String, String>>();
+        if (keys == null) {
+            return out;
+        }
+        for (Map<String, Object> key : keys) {
+            if (out.size() >= GridConfig.MAX_SORT_LEVELS - 1) {
+                break;
+            }
+            Object field = key == null ? null : key.get('field');
+            if (!(field instanceof String) || String.isBlank((String) field)) {
+                continue;
+            }
+            out.add(
+                new Map<String, String>{
+                    'field' => sortableColumn(def, (String) field),
+                    'direction' => 'desc'.equals(key.get('direction')) ? 'desc' : 'asc'
+                }
+            );
+        }
+        return out;
+    }
+
     private static String sortableColumn(GridConfig.Definition def, String sortField) {
         String wanted = sortField.trim();
         if (String.isNotBlank(def.sortField) && wanted.equalsIgnoreCase(def.sortField.trim())) {

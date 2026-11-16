@@ -552,7 +552,7 @@ public with sharing class GridViews {
      * How a grid opens on a view: what it keeps, or this user's unsaved change
      * to it (draft, from their layout), sorted as this user last sorted it
      * (sort, from their layout) else as it was saved. Returns { sortField,
-     * sortDirection, groupBy } as GridLayouts.startOf does, and the view's
+     * sortDirection, thenSort, groupBy } as GridLayouts.startOf does, and the view's
      * filters and filter logic as they can be used now: { filters, logic,
      * notes }. A filter that no longer fits the grid as this user sees it (its
      * column was removed, say) is left out and named in notes, and then the

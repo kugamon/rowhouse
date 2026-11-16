@@ -116,12 +116,13 @@ public with sharing class GridLayouts {
      * without a known unit is by month, and a grouping with levels none of
      * which is left falls back to the admin's, while an empty one is none.
      *
-     * The answer is { sortField, sortDirection, groupBy }: the sort as the
-     * server applies it (the admin's when the layout has none; null when
-     * neither has one) and the grouping as fetchRows takes it ("Field__c" or
-     * "Field__c:month"). The browser compares it with its own reading and
-     * fetches the rows again where they differ, so a difference here costs a
-     * call, never a wrong order.
+     * The answer is { sortField, sortDirection, thenSort, groupBy }: the sort
+     * as the server applies it (the admin's when the layout has none; null
+     * when neither has one), thenSort being the sorts after the first
+     * ([{ field, direction }]), and the grouping as fetchRows takes it
+     * ("Field__c" or "Field__c:month"). The browser compares it with its own
+     * reading and fetches the rows again where they differ, so a difference
+     * here costs a call, never a wrong order.
      */
     public static Map<String, Object> startOf(GridConfig.Definition def, String layout) {
         Map<String, Object> saved = parsed(layout);
@@ -132,17 +133,37 @@ public with sharing class GridLayouts {
         }
         String sortField = String.isBlank(def.sortField) ? null : def.sortField;
         String sortDirection = sortField == null ? null : ('desc'.equals(def.sortDirection) ? 'desc' : 'asc');
+        List<Map<String, Object>> thenSort = new List<Map<String, Object>>();
+        if (sortField != null) {
+            for (Map<String, String> level : def.thenSort) {
+                thenSort.add(
+                    new Map<String, Object>{ 'field' => level.get('field'), 'direction' => level.get('direction') }
+                );
+            }
+        }
         Object savedSort = saved == null ? null : saved.get('sort');
         if (savedSort instanceof List<Object>) {
+            List<Map<String, Object>> fit = new List<Map<String, Object>>();
             for (Object key : (List<Object>) savedSort) {
                 Map<String, Object> k = key instanceof Map<String, Object> ? (Map<String, Object>) key : null;
                 GridConfig.Column c = k != null && k.get('field') instanceof String
                     ? byField.get((String) k.get('field'))
                     : null;
-                if (c != null && c.sortable != false) {
-                    sortField = c.field;
-                    sortDirection = 'desc'.equals(k.get('direction')) ? 'desc' : 'asc';
-                    break;
+                if (c != null && c.sortable != false && fit.size() < GridConfig.MAX_SORT_LEVELS) {
+                    fit.add(
+                        new Map<String, Object>{
+                            'field' => c.field,
+                            'direction' => 'desc'.equals(k.get('direction')) ? 'desc' : 'asc'
+                        }
+                    );
+                }
+            }
+            if (!fit.isEmpty()) {
+                sortField = (String) fit[0].get('field');
+                sortDirection = (String) fit[0].get('direction');
+                thenSort = new List<Map<String, Object>>();
+                for (Integer i = 1; i < fit.size(); i++) {
+                    thenSort.add(fit[i]);
                 }
             }
         }
@@ -165,6 +186,7 @@ public with sharing class GridLayouts {
         return new Map<String, Object>{
             'sortField' => sortField,
             'sortDirection' => sortDirection,
+            'thenSort' => thenSort,
             'groupBy' => groupBy
         };
     }

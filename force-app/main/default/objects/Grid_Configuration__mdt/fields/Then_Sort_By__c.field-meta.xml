@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Then_Sort_By__c</fullName>
+    <description>Up to four more sorts after Default Sort Field, in order, as in a SOQL ORDER BY: LastModifiedDate DESC, CloseDate ASC. Each must be a column of the grid with Sortable selected.</description>
+    <inlineHelpText>Optional. Columns to sort by next, in order, each with ASC or DESC: LastModifiedDate DESC, CloseDate ASC.</inlineHelpText>
+    <label>Then Sort By</label>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+    <fieldManageability>SubscriberControlled</fieldManageability>
+</CustomField>
