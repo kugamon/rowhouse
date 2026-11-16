@@ -3,17 +3,49 @@
 Each release is a version of the Rowhouse Grid managed package (namespace
 `rowhouse`). Install or upgrade from its links; an upgrade keeps your grids.
 
+## 1.5 — Winter 2027 (16 November 2026)
+
+The version to install. It upgrades 1.0, 1.1, 1.2, 1.3 or 1.4 in place and
+keeps your grids, layouts and saved views.
+
+- **Package version:** 1.5.0.3, ID `04tUK000000VNI5YAO`
+- **Install:**
+  [production or Developer Edition](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000VNI5YAO)
+  ·
+  [sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000VNI5YAO)
+  · `sf package install --package 04tUK000000VNI5YAO --target-org <your org> --wait 20`
+
+- **A default sort of up to five columns.** The Grid Admin tab's Columns tab
+  says the order the grid opens in, over the columns ("Opens sorted by Stage
+  (ascending), then Last Modified Date (descending)"), and **Edit sort** opens
+  a Sort dialog: Sort by, then up to four Then by rows, each Ascending or
+  Descending, with arrows to reorder and Add sort. Sort by can be any field
+  the grid can sort by, a column or not; the Then by rows are the grid's
+  sortable columns. Each sorted column shows its place beside its Sort box
+  (1 ↑, 2 ↓). In Setup, Default Sort Field and Default Sort Direction stay the
+  first level and a new field, **Then Sort By**, holds the rest
+  (`LastModifiedDate DESC, CloseDate ASC`). Asked for in issue #16.
+- **Everyone follows the default until they sort.** Users who have not sorted
+  a grid get the whole default sort, new users included, and any later change
+  to it. A user's own sort is kept until Reset layout, which brings the
+  default back. Salesforce orders the rows by every level, so the order holds
+  past the first 10,000 rows. A level on a field a user can't read is left out
+  for that user.
+- **A new grid starts sorted** by the name column it starts with, A to Z.
+- **The toolbar folds into List actions** wherever its buttons don't all fit
+  across the grid, such as a narrow column of a record page, not only on a
+  phone. The search and View Controls stay beside it.
+- **The Grid Guide beside the grid editor** covers every setting on each tab:
+  Sort, Width, Field, Frozen columns, Delete selected rows, Log every change,
+  a filter's Label, an action's Runs, Input and Asks first, a child table's
+  Tab label, and what still applies under a saved view.
+- **Fixed:** the Grid Admin tab could read "Rowhouse 0.0" instead of the
+  installed version. It now reads the version installed in the org, and
+  without one still offers Check for a newer version.
+
 ## 1.4 — Winter 2027 (27 October 2026)
 
-The version to install. It upgrades 1.0, 1.1, 1.2 or 1.3 in place and keeps
-your grids and layouts.
-
-- **Package version:** 1.4.0.2, ID `04tUK000000UDW5YAO`
-- **Install:**
-  [production or Developer Edition](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000UDW5YAO)
-  ·
-  [sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000UDW5YAO)
-  · `sf package install --package 04tUK000000UDW5YAO --target-org <your org> --wait 20`
+Package version 1.4.0.2. Replaced by 1.5: install 1.5 instead.
 
 - **Saved views, as list views have them.** The grid's title is a view
   picker: Recent Views, All Other Views and a search. **View Controls** (a

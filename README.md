@@ -18,15 +18,15 @@ in Lightning Experience, in the browsers Salesforce supports.
 
 ## Install
 
-Rowhouse 1.4, **Winter 2027**, is a managed package (namespace `rowhouse`,
-package version ID `04tUK000000UDW5YAO`).
+Rowhouse 1.5, **Winter 2027**, is a managed package (namespace `rowhouse`,
+package version ID `04tUK000000VNI5YAO`).
 
 - **Production or Developer Edition org:**
-  [install Rowhouse](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000UDW5YAO)
+  [install Rowhouse](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000VNI5YAO)
 - **Sandbox:**
-  [install Rowhouse in a sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000UDW5YAO)
+  [install Rowhouse in a sandbox](https://test.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000VNI5YAO)
 - **Salesforce CLI:**
-  `sf package install --package 04tUK000000UDW5YAO --target-org <your org> --wait 20`
+  `sf package install --package 04tUK000000VNI5YAO --target-org <your org> --wait 20`
 
 Then assign the **Rowhouse Grid Admin** permission set to whoever builds grids
 and **Rowhouse Grid User** to everyone who uses them, and open the **Rowhouse**

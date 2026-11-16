@@ -28,7 +28,7 @@ the release notes unless you would rather stay anonymous.
 Security fixes go into the latest released version of the managed package.
 To get them, install or upgrade from that version's link in
 [CHANGELOG.md](CHANGELOG.md); an upgrade keeps your grids. The latest version
-is 1.4, Winter 2027.
+is 1.5, Winter 2027.
 
 ## How Rowhouse protects data
 
