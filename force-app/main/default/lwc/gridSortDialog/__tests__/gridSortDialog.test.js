@@ -60,6 +60,13 @@ it('shows the sort as rows: Sort by, then Then by, each a column and a direction
     expect($('.rh-sort-hint').textContent).toBe('Up to 5.');
 });
 
+it('says "the grid" mid-sentence when the grid has no title yet', async () => {
+    await mount({ gridLabel: '' });
+    expect($('.rh-sort-intro').textContent).toMatch(/^The order the grid opens in: /);
+    await mount({ gridLabel: '   ' });
+    expect($('.rh-sort-intro').textContent).toMatch(/^The order the grid opens in: /);
+});
+
 it('offers each column once: a row leaves out the columns the other rows have', async () => {
     await mount();
     const [first, second] = $$('.rh-sort-field');

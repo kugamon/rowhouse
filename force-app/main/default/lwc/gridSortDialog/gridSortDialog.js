@@ -66,7 +66,9 @@ export default class GridSortDialog extends LightningElement {
     }
 
     get intro() {
-        const grid = this.gridLabel ? this.gridLabel : 'The grid';
+        // A new grid may have no title yet; the words sit mid-sentence, so lower case.
+        const title = typeof this.gridLabel === 'string' ? this.gridLabel.trim() : '';
+        const grid = title || 'the grid';
         return `The order ${grid} opens in: first by any field, then by its columns that can be sorted. A user who sorts the grid keeps their own order; Reset layout brings this one back.`;
     }
 
