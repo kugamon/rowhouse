@@ -50,6 +50,12 @@
     "@babel/core": "^7.29.6",
     "js-yaml@3": {
       "argparse": "^2.0.1"
+    },
+    "@lwc/eslint-plugin-lwc": {
+      "minimatch": "^11.0.8"
+    },
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "^11.0.8"
     }
   }
 }
