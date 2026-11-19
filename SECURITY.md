@@ -75,7 +75,7 @@ is 1.5, Winter 2027.
 The badges show the latest runs: **verify** on every push (it includes the
 rule scan), **Graph Engine** on the latest release.
 
-| Scan | What it checks | When | Findings in 1.4 |
+| Scan | What it checks | When | Findings in 1.5 |
 | --- | --- | --- | --- |
 | Salesforce Code Analyzer: AppExchange and security rules | The rules the AppExchange security review runs, over the whole package | Every push | None |
 | Salesforce Code Analyzer: Graph Engine | Every path from each server method Rowhouse's components call, for a missing object or field check and for sharing | Each release | None |

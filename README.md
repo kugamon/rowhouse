@@ -21,6 +21,12 @@ in Lightning Experience, in the browsers Salesforce supports.
 Rowhouse 1.5, **Winter 2027**, is a managed package (namespace `rowhouse`,
 package version ID `04tUK000000VNI5YAO`).
 
+It runs in **Enterprise Edition and above, and Developer Edition**, with their
+sandboxes. It can't be installed in Starter, Pro Suite or Professional Edition:
+Salesforce doesn't run a managed package's Apex there. To try it without one of
+those editions, use a free
+[Developer Edition org](https://developer.salesforce.com/signup).
+
 - **Production or Developer Edition org:**
   [install Rowhouse](https://login.salesforce.com/packaging/installPackage.apexp?p0=04tUK000000VNI5YAO)
 - **Sandbox:**

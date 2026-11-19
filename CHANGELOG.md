@@ -2,6 +2,8 @@
 
 Each release is a version of the Rowhouse Grid managed package (namespace
 `rowhouse`). Install or upgrade from its links; an upgrade keeps your grids.
+Every version runs in Enterprise Edition and above, and Developer Edition, with
+their sandboxes; not in Starter, Pro Suite or Professional Edition.
 
 ## 1.5 — Winter 2027 (16 November 2026)
 
